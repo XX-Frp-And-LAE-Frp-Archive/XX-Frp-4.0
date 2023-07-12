@@ -1,0 +1,13 @@
+[Server]
+Host = "0.0.0.0"
+Port = 8080
+
+[Debug]
+Debug = false
+
+[Mysql]
+User = "mefrp"
+Password = "2JMOmW6lCDKmGb)g"
+Host = "mhy2.muhanyun.cn"
+Port = "10175"
+Database = "mefrp"
