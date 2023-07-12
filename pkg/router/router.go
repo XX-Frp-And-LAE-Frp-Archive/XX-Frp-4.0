@@ -20,5 +20,11 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiv2Router.GET("/user", func(c *gin.Context) {
 			HandleUser(c, db)
 		})
+		apiv2Router.GET("/sign", func(c *gin.Context) {
+			HandleSignGet(c, db)
+		})
+		apiv2Router.POST("/sign", func(c *gin.Context) {
+			HandleSignPost(c, db)
+		})
 	}
 }
