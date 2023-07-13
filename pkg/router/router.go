@@ -56,5 +56,11 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiV2Router.GET("/tunnel/list", func(c *gin.Context) {
 			TunnelHandler.GetTunnelList(c, db)
 		})
+		apiV2Router.GET("/tunnel/conf/node/:node", func(c *gin.Context) {
+			TunnelHandler.GetConfByNode(c, db)
+		})
+		apiV2Router.GET("/tunnel/conf/id/:id", func(c *gin.Context) {
+			TunnelHandler.GetConfByID(c, db)
+		})
 	}
 }

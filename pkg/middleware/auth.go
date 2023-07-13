@@ -37,6 +37,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 
 		// 将用户名传递给下级路由
 		c.Set("username", tokenData.Username)
+		c.Set("token", token)
 
 		// 继续处理后续的请求
 		c.Next()

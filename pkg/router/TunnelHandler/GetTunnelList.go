@@ -18,12 +18,15 @@ type Proxy struct {
 	NodeName     string `json:"node_name"`
 	NodeHostname string `json:"node_hostname"`
 	NodePort     string `json:"node_port"`
+	NodeToken    string `json:"node_token"`
+	RemotePort   string `json:"remote_port"`
 }
 type Node struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
 	Hostname string `json:"hostname"`
 	Port     string `json:"port"`
+	Token    string `json:"token"`
 }
 
 func GetTunnelList(c *gin.Context, db *gorm.DB) {
@@ -46,6 +49,7 @@ func GetTunnelList(c *gin.Context, db *gorm.DB) {
 		proxies[i].NodeName = node.Name
 		proxies[i].NodeHostname = node.Hostname
 		proxies[i].NodePort = node.Port
+		proxies[i].NodeToken = node.Token
 	}
 	c.JSON(http.StatusOK, proxies)
 }
