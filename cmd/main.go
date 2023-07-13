@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/cron"
 	"github.com/ahmr-bot/ME-Frp/pkg/mysql"
 	"github.com/ahmr-bot/ME-Frp/pkg/router"
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,12 @@ func main() {
 
 	// 创建 Gin 引擎
 	engine := gin.Default()
+
+	// 加载统计数据
+	go cron.UpdateStatisticsPeriodically(db)
+
+	// 加载赞助者
+	go cron.UpdateDataPeriodically(db)
 
 	// 加载所有路由
 	router.LoadRoutes(engine, db)

@@ -13,6 +13,13 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiv1Router.POST("/login", func(c *gin.Context) {
 			HandleLogin(c, db)
 		})
+		apiv1Router.GET("/sponsor", func(c *gin.Context) {
+			HandleSponsor(c)
+		})
+		apiv1Router.GET("/statistics", func(c *gin.Context) {
+			HandleStatistics(c)
+		})
+
 	}
 	apiv2Router := r.Group("/api/v2")
 	apiv2Router.Use(middleware.AuthMiddleware(db))
@@ -26,5 +33,6 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiv2Router.POST("/sign", func(c *gin.Context) {
 			HandleSignPost(c, db)
 		})
+		apiv2Router.GET("")
 	}
 }
