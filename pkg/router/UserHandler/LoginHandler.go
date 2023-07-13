@@ -1,6 +1,7 @@
-package router
+package UserHandler
 
 import (
+	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -12,6 +13,7 @@ type User struct {
 	Username string `gorm:"unique"`
 	Email    string `gorm:"unique"`
 	Password []byte
+	Traffic  int64
 }
 
 // Token 结构体
@@ -33,7 +35,10 @@ func HandleLogin(c *gin.Context, db *gorm.DB) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-
+	if register.IsValidPassword(loginData.Password) == false || (register.IsValidEmail(loginData.UsernameOrEmail) == false && register.IsValidUsername(loginData.UsernameOrEmail) == false) {
+		c.JSON(400, gin.H{"error": "Invalid username or email or password"})
+		return
+	}
 	// 根据用户名或邮箱查询用户
 	user, err := findUserByUsernameOrEmail(loginData.UsernameOrEmail, db)
 	if err != nil {

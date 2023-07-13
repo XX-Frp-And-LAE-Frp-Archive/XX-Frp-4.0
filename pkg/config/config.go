@@ -8,6 +8,7 @@ type Config struct {
 	Server struct {
 		Host string
 		Port int
+		Name string
 	}
 	Debug struct {
 		Debug bool
@@ -19,14 +20,15 @@ type Config struct {
 		Port     string
 		Database string
 	}
-	Redis struct {
-		Addr     string
-		Password string
-		DB       int
+	Smtp struct {
+		Addr   string
+		Passwd string
+		Port   int
+		From   string
 	}
-	V2 struct {
-		Dir       string
-		OSSPrefix string
+	Realname struct {
+		SecretID  string
+		SecretKey string
 	}
 }
 

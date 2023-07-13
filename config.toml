@@ -8,6 +8,6 @@ Debug = false
 [Mysql]
 User = "mefrp"
 Password = "2JMOmW6lCDKmGb)g"
-Host = "mhy2.muhanyun.cn"
+Host = "14.211.33.64"
 Port = "10175"
 Database = "mefrp"

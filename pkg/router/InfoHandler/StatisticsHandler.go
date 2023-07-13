@@ -1,4 +1,4 @@
-package router
+package InfoHandler
 
 import (
 	"github.com/ahmr-bot/ME-Frp/pkg/cron"

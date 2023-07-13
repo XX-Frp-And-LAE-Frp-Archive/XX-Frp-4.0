@@ -1,6 +1,7 @@
-package router
+package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/router/UserHandler"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"math/rand"
@@ -65,6 +66,15 @@ func HandleSignPost(c *gin.Context, db *gorm.DB) {
 	// 更新签到表的总流量字段
 	sign.Totaltraffic += randomTraffic
 
+	// 读取 users 表的 traffic 值 将获得流量 乘以 1024 相加写入
+	var user UserHandler.User
+	result = db.Table("users").Where("username = ?", username).First(&user)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		return
+	}
+	user.Traffic += randomTraffic * 1024
+	db.Save(&user)
 	// 将签到记录保存到数据库中
 	if result.Error != nil {
 		db.Table("sign").Create(&sign)
