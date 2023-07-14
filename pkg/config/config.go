@@ -6,10 +6,11 @@ import (
 
 type Config struct {
 	Server struct {
-		Host string
-		Port int
-		Name string
-		Url  string
+		Host  string
+		Port  int
+		Name  string
+		Url   string
+		Token string
 	}
 	Debug struct {
 		Debug bool

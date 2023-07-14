@@ -5,6 +5,7 @@ import (
 	"github.com/ahmr-bot/ME-Frp/pkg/router/InfoHandler"
 	"github.com/ahmr-bot/ME-Frp/pkg/router/RealnameHandler"
 	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
+	"github.com/ahmr-bot/ME-Frp/pkg/router/StartHandler"
 	"github.com/ahmr-bot/ME-Frp/pkg/router/TunnelHandler"
 	"github.com/ahmr-bot/ME-Frp/pkg/router/UserHandler"
 	"github.com/gin-gonic/gin"
@@ -70,6 +71,12 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 		apiV2Router.POST("/tunnel/create", func(c *gin.Context) {
 			TunnelHandler.HandleCreateTunnel(c, db)
+		})
+	}
+	apiV3Router := r.Group("/api/v3")
+	{
+		apiV3Router.GET("/start", func(c *gin.Context) {
+			StartHandler.HandleStart(c, db)
 		})
 	}
 }

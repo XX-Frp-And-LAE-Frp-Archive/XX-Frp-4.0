@@ -134,7 +134,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 	}
 	// node 的 group 值是多个值组成的字符串 用分号分隔 例如 admin;default;realname;trustuser;
 	// 检查 node 的 group 值中是否包含该用户的 group 值
-	if !checkGroup(node.Group, user.Group) {
+	if !CheckGroup(node.Group, user.Group) {
 		c.JSON(400, gin.H{"error": "You are not allowed to create a proxy on this node"})
 		return
 	}
@@ -166,7 +166,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 	}
 	c.JSON(200, gin.H{"message": "success"})
 }
-func checkGroup(nodeGroup string, userGroup string) bool {
+func CheckGroup(nodeGroup string, userGroup string) bool {
 	// 不去除分号 直接判断是否包含
 	if strings.Contains(nodeGroup, userGroup) {
 		return true
