@@ -15,20 +15,26 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 	// 加载路由
 	apiV1Router := r.Group("/api/v1")
 	{
-		apiV1Router.POST("/login", func(c *gin.Context) {
+		apiV1Router.POST("/auth/login", func(c *gin.Context) {
 			UserHandler.HandleLogin(c, db)
 		})
-		apiV1Router.GET("/sponsor", func(c *gin.Context) {
+		apiV1Router.GET("/info/sponsor", func(c *gin.Context) {
 			InfoHandler.HandleSponsor(c)
 		})
-		apiV1Router.GET("/statistics", func(c *gin.Context) {
+		apiV1Router.GET("/info/statistics", func(c *gin.Context) {
 			InfoHandler.HandleStatistics(c)
 		})
-		apiV1Router.POST("/email", func(c *gin.Context) {
+		apiV1Router.POST("/auth/reg/email", func(c *gin.Context) {
 			register.HandleEmail(c, db)
 		})
-		apiV1Router.POST("/register", func(c *gin.Context) {
+		apiV1Router.POST("/auth/register", func(c *gin.Context) {
 			register.HandleRegister(c, db)
+		})
+		apiV1Router.POST("/auth/forgot_password", func(c *gin.Context) {
+			UserHandler.HandleForgotPassword(c, db)
+		})
+		apiV1Router.POST("/auth/reset_password/:link", func(c *gin.Context) {
+			UserHandler.HandleResetPassword(c, db)
 		})
 
 	}
@@ -61,6 +67,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 		apiV2Router.GET("/tunnel/conf/id/:id", func(c *gin.Context) {
 			TunnelHandler.GetConfByID(c, db)
+		})
+		apiV2Router.POST("/tunnel/create", func(c *gin.Context) {
+			TunnelHandler.HandleCreateTunnel(c, db)
 		})
 	}
 }

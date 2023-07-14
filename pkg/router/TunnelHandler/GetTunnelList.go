@@ -27,6 +27,7 @@ type Node struct {
 	Hostname string `json:"hostname"`
 	Port     string `json:"port"`
 	Token    string `json:"token"`
+	Group    string `json:"group"`
 }
 
 func GetTunnelList(c *gin.Context, db *gorm.DB) {

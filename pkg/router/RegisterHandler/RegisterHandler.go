@@ -56,7 +56,6 @@ func IsValidEmail(email string) bool {
 }
 
 func IsValidPassword(password string) bool {
-	// 校验密码格式，密码长度必须为6-16个字符，必须包含字母和数字
 	passwordRegex := `^\d{6,16}$`
 	match, _ := regexp.MatchString(passwordRegex, password)
 	return match

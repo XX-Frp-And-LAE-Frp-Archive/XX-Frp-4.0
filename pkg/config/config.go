@@ -9,6 +9,7 @@ type Config struct {
 		Host string
 		Port int
 		Name string
+		Url  string
 	}
 	Debug struct {
 		Debug bool

@@ -40,7 +40,7 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 		conf += "type = " + proxy.ProxyType + "\n"
 		conf += "local_ip = " + proxy.LocalIP + "\n"
 		conf += "local_port = " + proxy.LocalPort + "\n"
-		if proxy.ProxyType == "http" {
+		if proxy.ProxyType == "http" || proxy.ProxyType == "https" {
 			conf += "domain = " + proxy.Domain + "\n"
 		} else {
 			conf += "remote_port = " + proxy.RemotePort + "\n"
@@ -91,7 +91,7 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	conf += "type = " + proxy.ProxyType + "\n"
 	conf += "local_ip = " + proxy.LocalIP + "\n"
 	conf += "local_port = " + proxy.LocalPort + "\n"
-	if proxy.ProxyType == "http" {
+	if proxy.ProxyType == "http" || proxy.ProxyType == "https" {
 		conf += "domain = " + proxy.Domain + "\n"
 	} else {
 		conf += "remote_port = " + proxy.RemotePort + "\n"
