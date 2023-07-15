@@ -72,6 +72,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiV2Router.POST("/tunnel/create", func(c *gin.Context) {
 			TunnelHandler.HandleCreateTunnel(c, db)
 		})
+		apiV2Router.POST("/tunnel/delete", func(c *gin.Context) {
+			TunnelHandler.HandleDeleteTunnel(c, db)
+		})
 	}
 	apiV3Router := r.Group("/api/v3")
 	{

@@ -34,23 +34,23 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 	// 使用isValidEmail 函数检测邮箱
 	if !IsValidEmail(email) {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"msg": "邮箱格式错误",
+			"message": "邮箱格式错误",
 		})
 	}
 	// 查询数据库中是否已经存在该邮箱
 	if checkEmail(email, db) {
 		c.JSON(200, gin.H{
-			"msg": "注册失败，邮箱已存在",
+			"message": "注册失败，邮箱已存在",
 		})
 		return
 	}
 	// 生成6位随机验证码
 	code := generateRandomCode()
-
+	// 发送邮件
 	// 发送邮件
 	err := sendEmail(email, code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email" + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to send email" + err.Error()})
 		return
 	}
 	// 查询数据库中是否存在指定邮箱的记录
@@ -63,7 +63,7 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 		existingRecord.Time = time.Now().Unix()
 		err := db.Model(&existingRecord).Where("email = ?", email).Updates(Code{Code: existingRecord.Code, Time: existingRecord.Time}).Error
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update record"})
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to update record"})
 			return
 		}
 	} else if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -75,15 +75,17 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 		}
 		err := db.Create(&record).Error
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save record"})
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save record"})
 			return
 		}
 	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query database"})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to query database"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Email sent successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "ok",
+		"message": "Email sent successfully"})
 }
 
 func generateRandomCode() string {

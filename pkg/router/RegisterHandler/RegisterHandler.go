@@ -212,5 +212,9 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	// 将token写入数据库表 tokens
 	result = db.Create(&tokenObj)
 
-	c.JSON(200, gin.H{"message": "注册成功"})
+	c.JSON(200, gin.H{
+		"status":  200,
+		"message": "注册成功",
+		"token":   token,
+	})
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/ahmr-bot/ME-Frp/pkg"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
 	"github.com/ahmr-bot/ME-Frp/pkg/cron"
+	"github.com/ahmr-bot/ME-Frp/pkg/middleware"
 	"github.com/ahmr-bot/ME-Frp/pkg/mysql"
 	"github.com/ahmr-bot/ME-Frp/pkg/router"
 	"github.com/gin-gonic/gin"
@@ -42,6 +43,9 @@ func main() {
 
 	// 创建 Gin 引擎
 	engine := gin.Default()
+
+	// 加载中间件
+	engine.Use(middleware.CORSMiddleware())
 
 	// 加载统计数据
 	go cron.UpdateStatisticsPeriodically(db)

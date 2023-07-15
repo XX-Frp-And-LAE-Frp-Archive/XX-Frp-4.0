@@ -42,10 +42,13 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 	// 获取中间件传递的用户名
 	username, _ := c.Get("username")
 
+	if username == "" {
+		return
+	}
+
 	var user UserInfo
 	result := db.Table("users").Where("username = ?", username).First(&user)
 	if result.Error != nil {
-		c.JSON(404, gin.H{"message": "User not found"})
 		return
 	}
 

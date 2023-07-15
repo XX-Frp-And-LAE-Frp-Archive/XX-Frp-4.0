@@ -3,6 +3,7 @@ package RealnameHandler
 import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"net/http"
 )
 
 type User struct {
@@ -11,7 +12,14 @@ type User struct {
 }
 
 func GetRealnameInfo(c *gin.Context, db *gorm.DB) {
-	username, _ := c.Get("username")
+	// 获取中间件传递的用户名
+	username, err := c.Get("username")
+	if err != true {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Unauthorized",
+		})
+		return
+	}
 	// 获取数据库 users 表中的 group 字段
 	var user User
 	db.Model(&User{}).Where("username = ?", username).Select("group").Find(&user)

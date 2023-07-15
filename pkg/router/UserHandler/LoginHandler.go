@@ -1,7 +1,6 @@
 package UserHandler
 
 import (
-	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -25,49 +24,54 @@ type Token struct {
 }
 
 func HandleLogin(c *gin.Context, db *gorm.DB) {
-	// 解析请求参数
-	var loginData struct {
-		UsernameOrEmail string `json:"username_or_email" binding:"required"`
-		Password        string `json:"password" binding:"required"`
-	}
-	err := c.ShouldBindJSON(&loginData)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-	if register.IsValidPassword(loginData.Password) == false || (register.IsValidEmail(loginData.UsernameOrEmail) == false && register.IsValidUsername(loginData.UsernameOrEmail) == false) {
-		c.JSON(400, gin.H{"error": "Invalid username or email or password"})
-		return
-	}
+	// 解析表单数据
+	UsernameOrEmail := c.PostForm("username")
+	Password := c.PostForm("password")
+	//if register.IsValidPassword(Password) == false || (register.IsValidEmail(UsernameOrEmail) == false && register.IsValidUsername(UsernameOrEmail) == false) {
+	//	c.JSON(400, gin.H{"message": "Invalid username or email or password"})
+	//	return
+	//}
 	// 根据用户名或邮箱查询用户
-	user, err := findUserByUsernameOrEmail(loginData.UsernameOrEmail, db)
+	user, err := findUserByUsernameOrEmail(UsernameOrEmail, db)
 	if err != nil {
-		c.JSON(400, gin.H{"error": "Invalid username or email"})
+		c.JSON(400, gin.H{
+			"message": "Invalid username or email",
+		})
 		return
 	}
 
 	// 验证密码
-	err = bcrypt.CompareHashAndPassword(user.Password, []byte(loginData.Password))
+	err = bcrypt.CompareHashAndPassword(user.Password, []byte(Password))
 	if err != nil {
-		c.JSON(401, gin.H{"error": "Invalid password"})
+		c.JSON(401, gin.H{
+			"message": "Invalid password",
+		})
 		return
 	}
 
 	// 查询数据库中的 Token
 	token, err := findTokenByUserID(user.ID, db)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to query token"})
+		c.JSON(500, gin.H{
+			"message": "Failed to query token",
+		})
 		return
 	}
 
 	// 检查 Token 是否存在
 	if token == nil {
-		c.JSON(401, gin.H{"error": "Token does not exist"})
+		c.JSON(401, gin.H{
+			"message": "Token does not exist",
+		})
 		return
 	}
 
 	// 返回 Token
-	c.JSON(200, gin.H{"access_token": token.Token})
+	c.JSON(200, gin.H{
+		"status":       "success",
+		"message":      "Login successfully",
+		"access_token": token.Token,
+	})
 }
 
 // 根据用户名或邮箱查询用户

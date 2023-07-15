@@ -33,7 +33,7 @@ type Proxies struct {
 	Domain     string `json:"domain"`
 	Node       string `json:"node"`
 	RemotePort string `json:"remote_port"`
-	Lastupdate int64
+	Lastupdate int64  `json:"lastupdate"`
 }
 
 func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {

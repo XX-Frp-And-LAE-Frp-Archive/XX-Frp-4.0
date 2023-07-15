@@ -216,6 +216,8 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			})
 			return
 		}
+		// 获取该条记录的run_id
+		// 存储到数据库中
 		proxy.RunID = run_id
 		db.Save(&proxy)
 		c.JSON(200, gin.H{
@@ -266,6 +268,7 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 				})
 				return
 			}
+			// 返回 group 表中的 limit 字段
 			c.JSON(200, gin.H{
 				"status":  200,
 				"max-in":  group.Inbound,
@@ -273,6 +276,7 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			})
 			return
 		}
+		// 返回 limit 表中的 inbound outbound 字段
 		c.JSON(200, gin.H{
 			"status":  200,
 			"max-in":  limit.Inbound,

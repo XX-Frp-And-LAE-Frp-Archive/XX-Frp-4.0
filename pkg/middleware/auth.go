@@ -22,24 +22,25 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 		if token == "" || !strings.HasPrefix(token, "Bearer ") {
 			c.JSON(401, gin.H{"message": "Invalid authorization token"})
 			return
+		} else {
+
+			// 提取 token 值并去除前缀 "Bearer "
+			token = strings.TrimPrefix(token, "Bearer ")
+
+			// 查询Token对应的用户名
+			var tokenData Token
+			result := db.Where("token = ?", token).First(&tokenData)
+			if result.Error != nil || result.RowsAffected == 0 {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token"})
+				return
+			} else {
+
+				// 将用户名传递给下级路由
+				c.Set("username", tokenData.Username)
+				c.Set("token", token)
+
+				c.Next()
+			}
 		}
-
-		// 提取 token 值并去除前缀 "Bearer "
-		token = strings.TrimPrefix(token, "Bearer ")
-
-		// 查询Token对应的用户名
-		var tokenData Token
-		result := db.Where("token = ?", token).First(&tokenData)
-		if result.Error != nil || result.RowsAffected == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token"})
-			return
-		}
-
-		// 将用户名传递给下级路由
-		c.Set("username", tokenData.Username)
-		c.Set("token", token)
-
-		// 继续处理后续的请求
-		c.Next()
 	}
 }
