@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/gomail.v2"
 	"gorm.io/gorm"
+	"math/rand"
 	"time"
 )
 
@@ -75,15 +76,27 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 func SendEmail(email string, token string) error {
 	conf := config.GetConfig()
 	// 生成重置密码的链接
-	passwordResetURL := conf.Server.Url + "/auth/reset_password/" + token
+	passwordResetURL := conf.Server.Url + "/auth/reset/?token=" + token
 	// 发送邮件
 	mailer := gomail.NewDialer(conf.Smtp.Addr, conf.Smtp.Port, conf.Smtp.From, conf.Smtp.Passwd)
 	message := gomail.NewMessage()
 	message.SetHeader("From", conf.Smtp.From)
 	message.SetHeader("To", email)
 	message.SetHeader("Subject", conf.Server.Name+"重置密码")
+
+	// 添加messageId头部信息
+	messageId := GenerateMessageId()
+	message.SetHeader("Message-ID", messageId)
+
 	message.SetBody("text/plain", fmt.Sprintf("你的密码重置链接是: %s 15分钟内有效", passwordResetURL))
 	return mailer.DialAndSend(message)
+}
+
+func GenerateMessageId() string {
+	timestamp := time.Now().Unix()
+	randomNum := rand.Intn(1000)
+	messageId := fmt.Sprintf("<%d.%d@yourdomain.com>", timestamp, randomNum)
+	return messageId
 }
 
 func HandleResetPassword(c *gin.Context, db *gorm.DB) {
@@ -108,7 +121,7 @@ func HandleResetPassword(c *gin.Context, db *gorm.DB) {
 		c.JSON(400, gin.H{"error": "token已过期"})
 		// 删除findpass表中的token
 		if err := db.Table("findpass").Delete(&findpass).Error; err != nil {
-			c.JSON(500, gin.H{"error": "Failed to delete findpass"})
+			c.JSON(400, gin.H{"error": "Failed to delete findpass"})
 			return
 		}
 		return
@@ -116,17 +129,17 @@ func HandleResetPassword(c *gin.Context, db *gorm.DB) {
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(500, gin.H{"message": "密码加密失败"})
+		c.JSON(400, gin.H{"message": "密码加密失败"})
 		return
 	}
 	// 更新对应用户的密码
 	if err := db.Model(&User{}).Where("username = ?", findpass.Username).Update("password", string(hashedPassword)).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to update password"})
+		c.JSON(400, gin.H{"error": "Failed to update password"})
 		return
 	}
 	// 删除findpass表中的token
 	if err := db.Table("findpass").Delete(&findpass).Error; err != nil {
-		c.JSON(500, gin.H{"error": "Failed to delete findpass"})
+		c.JSON(400, gin.H{"error": "Failed to delete findpass"})
 		return
 	}
 	// 更新 token

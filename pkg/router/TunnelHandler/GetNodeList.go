@@ -37,6 +37,6 @@ func HandleGetNodeList(c *gin.Context, db *gorm.DB) {
 			nodeList = append(nodeList, node)
 		}
 		// 返回节点列表
-		c.JSON(200, gin.H{"nodes": nodeList})
+		c.JSON(200, gin.H{"data": nodeList})
 	}
 }

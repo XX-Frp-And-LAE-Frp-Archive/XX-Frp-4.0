@@ -101,28 +101,28 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 
 	// 校验用户名 邮箱 密码 验证码格式
 	if !IsValidUsername(username) {
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"code": 400,
 			"msg":  "用户名格式错误",
 		})
 		return
 	}
 	if !IsValidEmail(email) {
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"code": 400,
 			"msg":  "邮箱格式错误",
 		})
 		return
 	}
-	if !IsValidPassword(password) {
-		c.JSON(200, gin.H{
-			"code": 400,
-			"msg":  "密码格式错误",
-		})
-		return
-	}
+	//if !IsValidPassword(password) {
+	//	c.JSON(400, gin.H{
+	//		"code": 400,
+	//		"msg":  "密码格式错误",
+	//	})
+	//	return
+	// }
 	if !isValidCode(code) {
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"code": 400,
 			"msg":  "验证码格式错误",
 		})
@@ -130,14 +130,14 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	}
 	// 查询username是否被注册
 	if checkUsername(username, db) {
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"msg": "注册失败，用户名已存在",
 		})
 		return
 	}
 	// 查询邮箱是否被注册
 	if checkEmail(email, db) {
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"msg": "注册失败，邮箱已存在",
 		})
 		return
@@ -146,14 +146,14 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	var codes Codes
 	db.Table("codes").Where("email = ?", email).First(&codes)
 	if codes.Code != code {
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"msg": "注册失败，验证码错误",
 		})
 		return
 	} else {
 		// 验证码正确，获取数据库对应行的time时间戳字段 与当前时间戳进行比对，判断是否超过 15 分钟
 		if time.Now().Unix()-codes.Time > 900 {
-			c.JSON(200, gin.H{
+			c.JSON(400, gin.H{
 				"msg": "注册失败，验证码已过期",
 			})
 			// 删除数据库中对应的验证码

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
+	"regexp"
 )
 
 type Proxy struct {
@@ -46,6 +47,12 @@ func GetTunnelList(c *gin.Context, db *gorm.DB) {
 		if nodeResult.Error != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": nodeResult.Error.Error()})
 			return
+		}
+		re := regexp.MustCompile(`"([^"]+)"`)
+		matches := re.FindStringSubmatch(proxies[i].Domain)
+		if len(matches) > 1 {
+			domain := matches[1]
+			proxies[i].Domain = domain
 		}
 		proxies[i].NodeName = node.Name
 		proxies[i].NodeHostname = node.Hostname

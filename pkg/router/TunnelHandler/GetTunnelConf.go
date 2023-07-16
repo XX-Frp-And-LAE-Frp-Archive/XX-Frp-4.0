@@ -3,6 +3,7 @@ package TunnelHandler
 import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"regexp"
 )
 
 func GetConfByNode(c *gin.Context, db *gorm.DB) {
@@ -41,7 +42,13 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 		conf += "local_ip = " + proxy.LocalIP + "\n"
 		conf += "local_port = " + proxy.LocalPort + "\n"
 		if proxy.ProxyType == "http" || proxy.ProxyType == "https" {
-			conf += "domain = " + proxy.Domain + "\n"
+			// Proxy.Domain 是 ["domain"]  格式 需要提取其中的 domain
+			re := regexp.MustCompile(`"([^"]+)"`)
+			matches := re.FindStringSubmatch(proxy.Domain)
+			if len(matches) > 1 {
+				domain := matches[1]
+				conf += "custom_domains = " + domain + "\n"
+			}
 		} else {
 			conf += "remote_port = " + proxy.RemotePort + "\n"
 		}
@@ -92,7 +99,12 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	conf += "local_ip = " + proxy.LocalIP + "\n"
 	conf += "local_port = " + proxy.LocalPort + "\n"
 	if proxy.ProxyType == "http" || proxy.ProxyType == "https" {
-		conf += "domain = " + proxy.Domain + "\n"
+		re := regexp.MustCompile(`"([^"]+)"`)
+		matches := re.FindStringSubmatch(proxy.Domain)
+		if len(matches) > 1 {
+			domain := matches[1]
+			conf += "custom_domains = " + domain + "\n"
+		}
 	} else {
 		conf += "remote_port = " + proxy.RemotePort + "\n"
 	}

@@ -156,6 +156,9 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 		}
 		ProxyType := c.Query("proxy_type")
 		ProxyName := c.Query("proxy_name")
+		// 直接获取的proxy_name 是 user.proxy_name 格式 将其分割 获取 proxy_name
+		ProxyNameSlice := strings.Split(ProxyName, ".")
+		ProxyName = ProxyNameSlice[1]
 
 		if ProxyType == "tcp" || ProxyType == "udp" {
 			RemotePort := c.Query("remote_port")
@@ -260,7 +263,7 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			}
 			// 通过 user.group 查询 group 表中的记录
 			var group Group
-			groupResult := db.First(&group, "group = ?", user.Group)
+			groupResult := db.First(&group, "name = ?", user.Group)
 			if groupResult.Error != nil {
 				c.JSON(403, gin.H{
 					"status":  403,

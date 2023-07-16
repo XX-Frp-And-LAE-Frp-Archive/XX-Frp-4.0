@@ -7,13 +7,10 @@ import (
 
 func HandleDeleteTunnel(c *gin.Context, db *gorm.DB) {
 	username, _ := c.Get("username")
-	proxyname := c.PostForm("proxy_name")
-	if proxyname == "" {
-		c.JSON(400, gin.H{"error": "proxy_name is empty"})
-		return
-	}
+	// 获取动态路由的 tunnelid
+	tunnelid := c.Param("tunnelid")
 	var proxy Proxies
-	db.Where("username = ? AND proxy_name = ?", username, proxyname).First(&proxy)
+	db.Where("username = ? AND id = ?", username, tunnelid).First(&proxy)
 	if proxy.ID == 0 {
 		c.JSON(404, gin.H{"error": "proxy not found"})
 		return

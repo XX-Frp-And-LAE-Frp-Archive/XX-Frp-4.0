@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"math/big"
+	mailrand "math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -104,6 +105,17 @@ func sendEmail(email, code string) error {
 	message.SetHeader("From", conf.Smtp.From)
 	message.SetHeader("To", email)
 	message.SetHeader("Subject", conf.Server.Name+"注册验证码")
+	// 添加messageId头部信息
+	messageId := GenerateMessageId()
+	message.SetHeader("Message-ID", messageId)
+
 	message.SetBody("text/plain", fmt.Sprintf("你的验证码是: %s 15分钟内有效", code))
 	return mailer.DialAndSend(message)
+}
+
+func GenerateMessageId() string {
+	timestamp := time.Now().Unix()
+	randomNum := mailrand.Intn(1000)
+	messageId := fmt.Sprintf("<%d.%d@yourdomain.com>", timestamp, randomNum)
+	return messageId
 }
