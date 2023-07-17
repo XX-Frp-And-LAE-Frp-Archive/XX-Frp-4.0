@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/gomail.v2"
 	"gorm.io/gorm"
-	"log"
 	"math/big"
 	mailrand "math/rand"
 	"net/http"
@@ -91,12 +90,11 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 }
 
 func generateRandomCode() string {
-	max := big.NewInt(999999)
-	code, err := rand.Int(rand.Reader, max)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strconv.Itoa(int(code.Int64()))
+	// 生成一个随机六位数
+	var max int64 = 999999
+	var min int64 = 100000
+	randNum, _ := rand.Int(rand.Reader, big.NewInt(max-min))
+	return strconv.FormatInt(randNum.Int64()+min, 10)
 }
 
 func sendEmail(email, code string) error {
