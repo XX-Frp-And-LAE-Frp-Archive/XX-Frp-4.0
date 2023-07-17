@@ -37,10 +37,11 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "邮箱格式错误",
 		})
+		return
 	}
 	// 查询数据库中是否已经存在该邮箱
 	if checkEmail(email, db) {
-		c.JSON(200, gin.H{
+		c.JSON(500, gin.H{
 			"message": "注册失败，邮箱已存在",
 		})
 		return
