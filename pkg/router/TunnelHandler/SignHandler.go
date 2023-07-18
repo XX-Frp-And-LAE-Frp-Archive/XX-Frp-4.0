@@ -24,8 +24,12 @@ func HandleSignGet(c *gin.Context, db *gorm.DB) {
 	var sign Sign
 	result := db.Table("sign").Where("username = ?", username).First(&sign)
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"message": "Sign data not found"})
-		return
+		sign = Sign{
+			Username:     username.(string),
+			Signdate:     0,
+			Totalsign:    0,
+			Totaltraffic: 0,
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": sign})

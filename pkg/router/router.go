@@ -88,4 +88,8 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 			StartHandler.HandleStart(c, db)
 		})
 	}
+	// 监听默认路由
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(404, gin.H{"code": 404, "message": "ME Frp 4.0 API Server Is OK!"})
+	})
 }

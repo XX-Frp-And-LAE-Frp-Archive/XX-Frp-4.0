@@ -23,12 +23,14 @@ type Proxy struct {
 	RemotePort   string `json:"remote_port"`
 }
 type Node struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Hostname string `json:"hostname"`
-	Port     string `json:"port"`
-	Token    string `json:"token"`
-	Group    string `json:"group"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Hostname  string `json:"hostname"`
+	Port      string `json:"port"`
+	Token     string `json:"token"`
+	Group     string `json:"group"`
+	AllowPort string `json:"allow_port"`
+	AllowType string `json:"allow_type"`
 }
 
 func GetTunnelList(c *gin.Context, db *gorm.DB) {

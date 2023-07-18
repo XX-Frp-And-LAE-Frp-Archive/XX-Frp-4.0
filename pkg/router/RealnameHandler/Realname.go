@@ -65,23 +65,22 @@ func calcAuthorization(source string, secretId string, secretKey string) (auth s
 	return auth, datetime, nil
 }
 func RealnameHandler(c *gin.Context, db *gorm.DB) {
-	conf := config.GetConfig()
 	username, _ := c.Get("username")
 	// 获取提交的表单中的名字和身份证号
 	name := c.PostForm("name")
 	idcard := c.PostForm("idcard")
 	// 检查提交的表单中的名字和身份证号格式
 	if !IsValidName(name) {
-		c.JSON(200, gin.H{
-			"code": 400,
-			"msg":  "姓名格式错误",
+		c.JSON(400, gin.H{
+			"code":    400,
+			"message": "姓名格式错误",
 		})
 		return
 	}
 	if !IsValidIDCard(idcard) {
-		c.JSON(200, gin.H{
-			"code": 400,
-			"msg":  "身份证号格式错误",
+		c.JSON(400, gin.H{
+			"code":    400,
+			"message": "身份证号格式错误",
 		})
 		return
 	}
@@ -89,9 +88,9 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	var realname Realname
 	chachong := db.Where("username = ?", username).First(&realname)
 	if chachong.RowsAffected != 0 {
-		c.JSON(200, gin.H{
-			"code": 400,
-			"msg":  "已经实名认证",
+		c.JSON(400, gin.H{
+			"code":    400,
+			"message": "已经实名认证",
 		})
 		return
 	}
@@ -100,9 +99,9 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	fangshua := db.Where("username = ?", username).First(&failrealname)
 	if fangshua.RowsAffected != 0 {
 		if time.Now().Unix()-failrealname.Time < 86400 {
-			c.JSON(200, gin.H{
-				"code": 400,
-				"msg":  "24小时内只能认证一次",
+			c.JSON(400, gin.H{
+				"code":    400,
+				"message": "24小时内只能认证一次",
 			})
 			return
 		}
@@ -119,6 +118,7 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 	source := "market"
 	// 进行签名
+	conf := config.GetConfig()
 	auth, datetime, err := calcAuthorization(source, conf.Realname.SecretID, conf.Realname.SecretKey)
 	// 拼接 body 数据
 	// body参数
@@ -174,8 +174,8 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		// 返回更新成功的消息
 
 		c.JSON(200, gin.H{
-			"code": 200,
-			"msg":  "success",
+			"code":    200,
+			"message": "success",
 		})
 	} else {
 		// 将 username time 写入到 failrealname 表中
@@ -184,9 +184,9 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 			Time:     time.Now().Unix(),
 		})
 		// 返回实名认证失败的消息
-		c.JSON(200, gin.H{
+		c.JSON(400, gin.H{
 			"code":        400,
-			"msg":         "实名认证失败",
+			"message":     "实名认证失败",
 			"result":      resp.StatusCode,
 			"result-data": result.Data.Result,
 		})
