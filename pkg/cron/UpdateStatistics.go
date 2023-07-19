@@ -28,6 +28,11 @@ type Node struct {
 // 创建一个缓存变量
 var CacheData interface{}
 
+type Todaytraffic struct {
+	User    string `gorm:"column:user"`
+	Traffic int64  `gorm:"column:traffic"`
+}
+
 func UpdateStatisticsPeriodically(db *gorm.DB) {
 	for {
 
@@ -52,9 +57,10 @@ func UpdateStatisticsPeriodically(db *gorm.DB) {
 			continue
 		}
 
-		// 查询 traffic 列的和
-		var trafficSum int64
-		if err := db.Model(&User{}).Select("SUM(traffic)").Scan(&trafficSum).Error; err != nil {
+		// 查询 todaytraffic 表 traffic 列的和
+		var sum int64
+		if err := db.Table("todaytraffic").Model(&Todaytraffic{}).Select("SUM(traffic)").Scan(&sum).Error; err != nil {
+			// 处理错误
 			fmt.Println("Failed to query traffic sum:", err)
 			continue
 		}
@@ -64,7 +70,7 @@ func UpdateStatisticsPeriodically(db *gorm.DB) {
 			"userCount":  userCount,
 			"proxyCount": proxyCount,
 			"nodeCount":  nodeCount,
-			"trafficSum": trafficSum,
+			"trafficSum": sum,
 		}
 		log.Print("Updated Statistics data from database.")
 		time.Sleep(5 * time.Minute)
