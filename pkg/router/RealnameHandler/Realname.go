@@ -2,9 +2,13 @@ package RealnameHandler
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
 	"github.com/gin-gonic/gin"
@@ -43,8 +47,8 @@ func IsValidName(name string) bool {
 	return true
 }
 func IsValidIDCard(idcard string) bool {
-	//通过正则表达式判断是否为18位数字
-	if m, _ := regexp.MatchString("^[0-9]{18}$", idcard); !m {
+	//通过正则表达式判断是否为18位数字或包含X
+	if m, _ := regexp.MatchString("^[0-9]{17}[0-9X]$", idcard); !m {
 		return false
 	}
 	return true
@@ -129,7 +133,7 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	postData.Add("idcard", idcard)
 	// 发送 POST 请求 并使用 bodyParams 作为 body headers 作为请求头
 	// 创建一个请求对象，并设置请求方法、URL 和请求体
-	req, err := http.NewRequest("POST", "https://service-lbiior1h-1307960160.sh.apigw.tencentcs.com/release/idcard/verify", strings.NewReader(postData.Encode()))
+	req, err := http.NewRequest("POST", "https://service-k7p8p5lb-1307960160.sh.apigw.tencentcs.com/release/idcard/verify", strings.NewReader(postData.Encode()))
 	if err != nil {
 		panic(err)
 	}
@@ -161,11 +165,16 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 	// 判断实名认证结果
 	if result.Code == 200 && result.Data.Result == 1 {
+		// 使用base64加密 name
+		encodeName := base64.StdEncoding.EncodeToString([]byte(name))
+		// 使用base64加密 idcard
+		encodeIdcard := base64.StdEncoding.EncodeToString([]byte(idcard))
+
 		// 在 realname 表的创建一行 写入 username name idcard time 信息
 		db.Create(&Realname{
 			Username: username.(string),
-			Name:     name,
-			IDCard:   idcard,
+			Name:     encodeName,
+			IDCard:   encodeIdcard,
 			Time:     time.Now().Unix(),
 		})
 		// 更新 users 表的 group 为 realname
@@ -191,4 +200,26 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 			"result-data": result.Data.Result,
 		})
 	}
+}
+
+// rsa加密
+func RsaEncrypt(origData []byte) ([]byte, error) {
+	publicKey := `-----BEGIN RSA PUBLIC KEY-----
+	MEgCQQD3reUyiTiGapGOUcuSc66AtSHQRlDkMeYRDxX+FlbfUsZUrqf0tuVdrSaV
+	hhL3RIxsB4Jc39slV9/xZC7ZgpStAgMBAAE=
+	-----END RSA PUBLIC KEY-----`
+	// 定义 pkcs1 的公钥
+	block, _ := pem.Decode([]byte(publicKey))
+	if block == nil {
+		panic("public key error")
+	}
+	// 解析公钥
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	// 类型断言
+	pub := pubInterface.(*rsa.PublicKey)
+	// 使用公钥加密
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }
