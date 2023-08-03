@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -90,7 +91,8 @@ func IsValidUsername(username string) bool {
 func checkEmail(email string, db *gorm.DB) bool {
 	var user User
 	db.First(&user, "email = ?", email)
-	if user.Email == email {
+	lower := strings.ToLower(user.Email)
+	if lower == strings.ToLower(email) {
 		return true
 	}
 	return false
@@ -99,8 +101,11 @@ func checkEmail(email string, db *gorm.DB) bool {
 // 检查用户名是否已经注册
 func checkUsername(username string, db *gorm.DB) bool {
 	var user User
+	// 查找是否存在该用户
 	db.First(&user, "username = ?", username)
-	if user.Username == username {
+	// fmt.Printf(user.Username)
+	lower := strings.ToLower(user.Username)
+	if lower == strings.ToLower(username) {
 		return true
 	}
 	return false

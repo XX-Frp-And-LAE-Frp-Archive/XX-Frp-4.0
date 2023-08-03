@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -54,6 +55,11 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 	//检查proxyname是否合法
 	if proxy.ProxyName == "" {
 		c.JSON(400, gin.H{"message": "proxy_name is empty"})
+		return
+	}
+	// 检查proxy_name 是否是字母数字组合
+	if !CheckProxyName(proxy.ProxyName) {
+		c.JSON(400, gin.H{"message": "隧道名称只能是字母数字组合"})
 		return
 	}
 	// 检查proxytype是否合法
@@ -182,6 +188,15 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 func CheckGroup(nodeGroup string, userGroup string) bool {
 	// 不去除分号 直接判断是否包含
 	if strings.Contains(nodeGroup, userGroup) {
+		return true
+	} else {
+		return false
+	}
+}
+
+// 检查 proxyname 是不是字母数字组成
+func CheckProxyName(proxyname string) bool {
+	if ok, _ := regexp.MatchString("^[a-zA-Z0-9]+$", proxyname); ok {
 		return true
 	} else {
 		return false
