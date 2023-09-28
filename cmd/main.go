@@ -53,6 +53,9 @@ func main() {
 	// 加载赞助者
 	go cron.UpdateDataPeriodically(db)
 
+	// 每天更新 traffic 数据库为 0
+	go cron.UpdateTrafficPeriodically(db)
+
 	// 加载所有路由
 	router.LoadRoutes(engine, db)
 

@@ -27,10 +27,8 @@ func HandleLogin(c *gin.Context, db *gorm.DB) {
 	// 解析表单数据
 	UsernameOrEmail := c.PostForm("username")
 	Password := c.PostForm("password")
-	//if register.IsValidPassword(Password) == false || (register.IsValidEmail(UsernameOrEmail) == false && register.IsValidUsername(UsernameOrEmail) == false) {
-	//	c.JSON(400, gin.H{"message": "Invalid username or email or password"})
-	//	return
-	//}
+
+	//
 	// 根据用户名或邮箱查询用户
 	user, err := findUserByUsernameOrEmail(UsernameOrEmail, db)
 	if err != nil {

@@ -133,7 +133,7 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	postData.Add("idcard", idcard)
 	// 发送 POST 请求 并使用 bodyParams 作为 body headers 作为请求头
 	// 创建一个请求对象，并设置请求方法、URL 和请求体
-	req, err := http.NewRequest("POST", "https://service-k7p8p5lb-1307960160.sh.apigw.tencentcs.com/release/idcard/verify", strings.NewReader(postData.Encode()))
+	req, err := http.NewRequest("POST", "https://service-mxg591r7-1308811306.sh.apigw.tencentcs.com/release/v3/id_name/verify", strings.NewReader(postData.Encode()))
 	if err != nil {
 		panic(err)
 	}

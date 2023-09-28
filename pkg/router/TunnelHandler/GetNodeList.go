@@ -28,12 +28,12 @@ func HandleGetNodeList(c *gin.Context, db *gorm.DB) {
 	for _, node := range nodes {
 		groups := strings.Split(node.Group, ";")
 		for _, group := range groups {
-			if group == user.Group {
+			if group == user.Group && node.Status == 200 {
 				nodeList = append(nodeList, node)
 			}
 		}
 		// 如果节点支持的 group 列表中包含 all 则添加到返回列表中
-		if node.Group == "all" {
+		if node.Group == "all" && node.Status == 200 {
 			nodeList = append(nodeList, node)
 		}
 	}

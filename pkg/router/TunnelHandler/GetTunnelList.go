@@ -31,6 +31,7 @@ type Node struct {
 	Group     string `json:"group"`
 	AllowPort string `json:"allow_port"`
 	AllowType string `json:"allow_type"`
+	Status    int
 }
 
 func GetTunnelList(c *gin.Context, db *gorm.DB) {
