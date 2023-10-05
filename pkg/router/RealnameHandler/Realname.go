@@ -11,8 +11,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -75,27 +77,18 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	idcard := c.PostForm("idcard")
 	// 检查提交的表单中的名字和身份证号格式
 	if !IsValidName(name) {
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "姓名格式错误",
-		})
+		respond.Respond(c, 400, "姓名格式错误!", 0)
 		return
 	}
 	if !IsValidIDCard(idcard) {
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "身份证号格式错误",
-		})
+		respond.Respond(c, 400, "身份证格式错误!", 0)
 		return
 	}
 	// 检查是否已经实名认证
 	var realname Realname
 	chachong := db.Where("username = ?", username).First(&realname)
 	if chachong.RowsAffected != 0 {
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "已经实名认证",
-		})
+		respond.Respond(c, 400, "已经实名认证!", 0)
 		return
 	}
 	// 检查24小时内是否有失败记录
@@ -103,10 +96,7 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	fangshua := db.Where("username = ?", username).First(&failrealname)
 	if fangshua.RowsAffected != 0 {
 		if time.Now().Unix()-failrealname.Time < 86400 {
-			c.JSON(400, gin.H{
-				"code":    400,
-				"message": "24小时内只能认证一次",
-			})
+			respond.Respond(c, 400, "24小时只能认证一次！", 0)
 			return
 		}
 		// 超过24小时删除对应用户的失败记录
@@ -153,7 +143,12 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		panic(err)
 	}
 	// 关闭请求
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
 
 	// 解析返回的 JSON 数据
 	var result VerifyResponse
@@ -181,28 +176,25 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		db.Model(&User{}).Where("username = ?", username).Update("group", "realname")
 
 		// 返回更新成功的消息
-
-		c.JSON(200, gin.H{
-			"code":    200,
-			"message": "success",
-		})
-	} else {
+		respond.Respond(c, 200, "认证成功", 0)
+	} else if result.Code != 200 {
+		respond.Respond(c, 500, "实名认证接口错误，请联系管理员", 0)
+	} else if result.Data.Result == 2 || result.Data.Result == 3 {
 		// 将 username time 写入到 failrealname 表中
 		db.Create(&Failrealname{
 			Username: username.(string),
 			Time:     time.Now().Unix(),
 		})
 		// 返回实名认证失败的消息
-		c.JSON(400, gin.H{
-			"code":        400,
-			"message":     "实名认证失败",
-			"result":      resp.StatusCode,
-			"result-data": result.Data.Result,
-		})
+		if result.Data.Result == 2 {
+			respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
+		} else {
+			respond.Respond(c, 400, "数据库信息缺失，请联系管理员或24小时重试", 0)
+		}
 	}
 }
 
-// rsa加密
+// RsaEncrypt rsa加密
 func RsaEncrypt(origData []byte) ([]byte, error) {
 	publicKey := `-----BEGIN RSA PUBLIC KEY-----
 	MEgCQQD3reUyiTiGapGOUcuSc66AtSHQRlDkMeYRDxX+FlbfUsZUrqf0tuVdrSaV

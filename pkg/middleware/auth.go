@@ -1,9 +1,9 @@
 package middleware
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"net/http"
 	"strings"
 )
 
@@ -20,7 +20,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 
 		// 检查 Authorization 头部是否为空或不包含前缀 "Bearer "
 		if token == "" || !strings.HasPrefix(token, "Bearer ") {
-			c.JSON(401, gin.H{"message": "Invalid authorization token"})
+			respond.Respond(c, 401, "错误的 Token 格式!", 0)
 			return
 		} else {
 
@@ -31,7 +31,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 			var tokenData Token
 			result := db.Where("token = ?", token).First(&tokenData)
 			if result.Error != nil || result.RowsAffected == 0 {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Invalid Token"})
+				respond.Respond(c, 401, "Token 不存在!", 0)
 				return
 			} else {
 

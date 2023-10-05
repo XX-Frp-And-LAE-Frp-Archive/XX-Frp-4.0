@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/gomail.v2"
 	"gorm.io/gorm"
 	"math/big"
 	mailrand "math/rand"
-	"net/http"
 	"strconv"
 	"time"
 )
@@ -33,25 +33,21 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 
 	// 使用isValidEmail 函数检测邮箱
 	if !IsValidEmail(email) {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "邮箱格式错误",
-		})
+		respond.Respond(c, 400, "邮箱不合法", 0)
 		return
 	}
 	// 查询数据库中是否已经存在该邮箱
 	if checkEmail(email, db) {
-		c.JSON(500, gin.H{
-			"message": "注册失败，邮箱已存在",
-		})
+		respond.Respond(c, 400, "邮箱已经注册，请直接登录", 0)
 		return
 	}
 	// 生成6位随机验证码
 	code := generateRandomCode()
 	// 发送邮件
-	// 发送邮件
 	err := sendEmail(email, code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to send email" + err.Error()})
+		respond.Respond(c, 500, "邮件发送错误，请联系管理员", 0)
+		fmt.Println(err)
 		return
 	}
 	// 查询数据库中是否存在指定邮箱的记录
@@ -64,7 +60,7 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 		existingRecord.Time = time.Now().Unix()
 		err := db.Model(&existingRecord).Where("email = ?", email).Updates(Code{Code: existingRecord.Code, Time: existingRecord.Time}).Error
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to update record"})
+			respond.Respond(c, 500, "验证码暂存错误，已发送的邮件请忽略，请联系管理员或重试！", 0)
 			return
 		}
 	} else if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -76,17 +72,14 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 		}
 		err := db.Create(&record).Error
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to save record"})
+			respond.Respond(c, 500, "验证码暂存错误，已发送的邮件请忽略，请联系管理员或重试！", 0)
 			return
 		}
 	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to query database"})
+		respond.Respond(c, 500, "验证码暂存错误，已发送的邮件请忽略，请联系管理员或重试！", 0)
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "ok",
-		"message": "Email sent successfully"})
+	respond.Respond(c, 200, "邮件发送成功，15分钟内有效，邮件可能被误判为垃圾邮件，请检查垃圾箱！", 0)
 }
 
 func generateRandomCode() string {

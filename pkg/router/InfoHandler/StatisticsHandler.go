@@ -13,8 +13,8 @@ func HandleStatistics(c *gin.Context) {
 		respond.Respond(c, 500, "获取缓存数据出错", nil)
 		return
 	}
-	
-	respond.Respond(c, 200, "成功", gin.H{
+
+	respond.Respond(c, 200, "Success!", gin.H{
 		"userCount":  data["userCount"],
 		"proxyCount": data["proxyCount"],
 		"nodeCount":  data["nodeCount"],

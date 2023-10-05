@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 获取赞助者
+// HandleSponsor 获取赞助者
 func HandleSponsor(c *gin.Context) {
-	respond.Respond(c, 200, "成功", cron.Cache)
+	respond.Respond(c, 200, "Success!", cron.Cache)
 }
