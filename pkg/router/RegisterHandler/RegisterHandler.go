@@ -3,6 +3,7 @@ package register
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -118,17 +119,11 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 
 	// 校验用户名 邮箱 密码 验证码格式
 	if !IsValidUsername(username) {
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "用户名格式错误",
-		})
+		respond.Respond(c, 400, "用户名格式错误！", 0)
 		return
 	}
 	if !IsValidEmail(email) {
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "邮箱格式错误",
-		})
+		respond.Respond(c, 400, "邮箱格式错误！", 0)
 		return
 	}
 	//if !IsValidPassword(password) {
@@ -139,40 +134,29 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	//	return
 	// }
 	if !isValidCode(code) {
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "验证码格式错误",
-		})
+		respond.Respond(c, 400, "验证码格式错误！", 0)
 		return
 	}
 	// 查询username是否被注册
 	if checkUsername(username, db) {
-		c.JSON(400, gin.H{
-			"message": "注册失败，用户名已存在",
-		})
+		respond.Respond(c, 400, "注册失败，用户名已存在！", 0)
 		return
 	}
 	// 查询邮箱是否被注册
 	if checkEmail(email, db) {
-		c.JSON(400, gin.H{
-			"message": "注册失败，邮箱已存在",
-		})
+		respond.Respond(c, 400, "注册失败，邮箱已存在！", 0)
 		return
 	}
 	// 使用email作为key，从数据库codes表中获取验证码 并与用户输入的验证码进行比对
 	var codes Codes
 	db.Table("codes").Where("email = ?", email).First(&codes)
 	if codes.Code != code {
-		c.JSON(400, gin.H{
-			"message": "注册失败，验证码错误",
-		})
+		respond.Respond(c, 400, "注册失败，验证码错误！", 0)
 		return
 	} else {
 		// 验证码正确，获取数据库对应行的time时间戳字段 与当前时间戳进行比对，判断是否超过 15 分钟
 		if time.Now().Unix()-codes.Time > 900 {
-			c.JSON(400, gin.H{
-				"message": "注册失败，验证码已过期",
-			})
+			respond.Respond(c, 400, "注册失败，验证码已经过期！", 0)
 			// 删除数据库中对应的验证码
 			db.Table("codes").Where("email = ?", email).Delete(&codes)
 			return
@@ -184,7 +168,7 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(500, gin.H{"message": "密码加密失败"})
+		respond.Respond(c, 500, "注册失败，密码处理错误!", 0)
 		return
 	}
 
@@ -210,7 +194,7 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	// 将用户对象写入数据库表 users
 	result := db.Create(&user)
 	if result.Error != nil {
-		c.JSON(500, gin.H{"message": "用户注册失败"})
+		respond.Respond(c, 500, "注册失败，用户写入错误！", 0)
 		return
 	}
 
@@ -229,9 +213,7 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	// 将token写入数据库表 tokens
 	result = db.Create(&tokenObj)
 
-	c.JSON(200, gin.H{
-		"status":  200,
-		"message": "注册成功",
-		"token":   token,
+	respond.Respond(c, 200, "注册成功", gin.H{
+		"token": token,
 	})
 }

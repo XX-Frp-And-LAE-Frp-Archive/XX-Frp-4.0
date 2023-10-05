@@ -108,6 +108,6 @@ func sendEmail(email, code string) error {
 func GenerateMessageId() string {
 	timestamp := time.Now().Unix()
 	randomNum := mailrand.Intn(1000)
-	messageId := fmt.Sprintf("<%d.%d@yourdomain.com>", timestamp, randomNum)
+	messageId := fmt.Sprintf("<%d.%d@mcserverx.com>", timestamp, randomNum)
 	return messageId
 }
