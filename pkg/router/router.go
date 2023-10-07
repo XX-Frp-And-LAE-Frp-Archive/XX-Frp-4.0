@@ -14,83 +14,99 @@ import (
 
 func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 	// 加载路由
-	apiV1Router := r.Group("/api/v1")
+	// v4 版本 API
+	apiPublicRouter := r.Group("/api/v4/public")
 	{
-		apiV1Router.POST("/auth/login", func(c *gin.Context) {
+		apiPublicRouter.POST("/auth/login", func(c *gin.Context) {
 			UserHandler.HandleLogin(c, db)
 		})
-		apiV1Router.GET("/info/sponsor", func(c *gin.Context) {
+		apiPublicRouter.GET("/info/sponsor", func(c *gin.Context) {
 			InfoHandler.HandleSponsor(c)
 		})
-		apiV1Router.GET("/info/statistics", func(c *gin.Context) {
+		apiPublicRouter.GET("/info/statistics", func(c *gin.Context) {
 			InfoHandler.HandleStatistics(c)
 		})
-		apiV1Router.POST("/auth/reg/email", func(c *gin.Context) {
+		apiPublicRouter.POST("/auth/reg/email", func(c *gin.Context) {
 			register.HandleEmail(c, db)
 		})
-		apiV1Router.POST("/auth/register", func(c *gin.Context) {
+		apiPublicRouter.POST("/auth/register", func(c *gin.Context) {
 			register.HandleRegister(c, db)
 		})
-		apiV1Router.POST("/auth/forgot_password", func(c *gin.Context) {
+		apiPublicRouter.POST("/auth/forgot_password", func(c *gin.Context) {
 			UserHandler.HandleForgotPassword(c, db)
 		})
-		apiV1Router.POST("/auth/reset_password/:link", func(c *gin.Context) {
+		apiPublicRouter.POST("/auth/reset_password/:link", func(c *gin.Context) {
 			UserHandler.HandleForgotResetPassword(c, db)
 		})
 
 	}
-	apiV2Router := r.Group("/api/v2")
-	apiV2Router.Use(middleware.AuthMiddleware(db))
+	apiAuthRouter := r.Group("/api/v4/auth")
+	apiAuthRouter.Use(middleware.AuthMiddleware(db))
 	{
-		apiV2Router.GET("/user", func(c *gin.Context) {
+		apiAuthRouter.GET("/user", func(c *gin.Context) {
 			UserHandler.HandleUser(c, db)
 		})
-		apiV2Router.GET("/user/sign", func(c *gin.Context) {
+		apiAuthRouter.GET("/user/sign", func(c *gin.Context) {
 			TunnelHandler.HandleSignGet(c, db)
 		})
-		apiV2Router.POST("/user/sign", func(c *gin.Context) {
+		apiAuthRouter.POST("/user/sign", func(c *gin.Context) {
 			TunnelHandler.HandleSignPost(c, db)
 		})
-		apiV2Router.POST("/user/refresh_token", func(c *gin.Context) {
+		apiAuthRouter.POST("/user/refresh_token", func(c *gin.Context) {
 			UserHandler.HandleRefreshToken(c, db)
 		})
-		apiV2Router.GET("/user/realname/get", func(c *gin.Context) {
+		apiAuthRouter.GET("/user/realname/get", func(c *gin.Context) {
 			RealnameHandler.GetRealnameInfo(c, db)
 		})
-		apiV2Router.POST("/user/realname/post", func(c *gin.Context) {
+		apiAuthRouter.POST("/user/realname/post", func(c *gin.Context) {
 			RealnameHandler.RealnameHandler(c, db)
 		})
-		apiV2Router.GET("/tunnel/list", func(c *gin.Context) {
+		apiAuthRouter.GET("/tunnel/list", func(c *gin.Context) {
 			TunnelHandler.GetTunnelList(c, db)
 		})
-		apiV2Router.GET("/tunnel/conf/node/:node", func(c *gin.Context) {
+		apiAuthRouter.GET("/tunnel/conf/node/:node", func(c *gin.Context) {
 			TunnelHandler.GetConfByNode(c, db)
 		})
-		apiV2Router.GET("/tunnel/conf/id/:id", func(c *gin.Context) {
+		apiAuthRouter.GET("/tunnel/conf/id/:id", func(c *gin.Context) {
 			TunnelHandler.GetConfByID(c, db)
 		})
-		apiV2Router.POST("/tunnel/create", func(c *gin.Context) {
+		apiAuthRouter.POST("/tunnel/create", func(c *gin.Context) {
 			TunnelHandler.HandleCreateTunnel(c, db)
 		})
-		apiV2Router.POST("/tunnel/delete/:tunnelid", func(c *gin.Context) {
+		apiAuthRouter.POST("/tunnel/delete/:tunnelid", func(c *gin.Context) {
 			TunnelHandler.HandleDeleteTunnel(c, db)
 		})
-		apiV2Router.GET("/tunnel/info/:tunnelid", func(c *gin.Context) {
+		apiAuthRouter.GET("/tunnel/info/:tunnelid", func(c *gin.Context) {
 			TunnelHandler.GetTunnelByID(c, db)
 		})
-		apiV2Router.GET("/node/list", func(c *gin.Context) {
+		apiAuthRouter.GET("/node/list", func(c *gin.Context) {
 			TunnelHandler.HandleGetNodeList(c, db)
 		})
-		apiV2Router.POST("/user/reset_password", func(c *gin.Context) {
+		apiAuthRouter.POST("/user/reset_password", func(c *gin.Context) {
 			UserHandler.HandleResetPassword(c, db)
 		})
 	}
+	// 保留 v3 版本的 Frps 鉴权
 	apiV3Router := r.Group("/api/v3")
 	{
 		apiV3Router.GET("/start", func(c *gin.Context) {
 			StartHandler.HandleStart(c, db)
 		})
 	}
+	// 考虑到地址更新后 简单启动受到影响，故保留 v2 版本简单启动的一部分
+	apiV2Router := r.Group("/api/v2")
+	{
+		apiV2Router.GET("/tunnel/conf/id/:id", func(c *gin.Context) {
+			TunnelHandler.GetConfByID(c, db)
+		})
+	}
+	// 原樱花面板（ME Frp 1.0） API（v1）
+	apiV2ProxyURL := "http://admin.mefrp.com:8123/api/"
+	apiV1Router := r.Group("api/v1")
+	{
+		apiV1Router.Use(reverseProxy(apiV2ProxyURL))
+	}
+
 	// 监听默认路由
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"code": 404, "message": "ME Frp 4.0 API Server Is OK!"})
