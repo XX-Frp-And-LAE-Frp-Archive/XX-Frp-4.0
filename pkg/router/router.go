@@ -35,7 +35,7 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 			UserHandler.HandleForgotPassword(c, db)
 		})
 		apiV1Router.POST("/auth/reset_password/:link", func(c *gin.Context) {
-			UserHandler.HandleResetPassword(c, db)
+			UserHandler.HandleForgotResetPassword(c, db)
 		})
 
 	}
@@ -45,19 +45,19 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiV2Router.GET("/user", func(c *gin.Context) {
 			UserHandler.HandleUser(c, db)
 		})
-		apiV2Router.GET("/sign", func(c *gin.Context) {
+		apiV2Router.GET("/user/sign", func(c *gin.Context) {
 			TunnelHandler.HandleSignGet(c, db)
 		})
-		apiV2Router.POST("/sign", func(c *gin.Context) {
+		apiV2Router.POST("/user/sign", func(c *gin.Context) {
 			TunnelHandler.HandleSignPost(c, db)
 		})
-		apiV2Router.POST("/refresh_token", func(c *gin.Context) {
+		apiV2Router.POST("/user/refresh_token", func(c *gin.Context) {
 			UserHandler.HandleRefreshToken(c, db)
 		})
-		apiV2Router.GET("/realname/get", func(c *gin.Context) {
+		apiV2Router.GET("/user/realname/get", func(c *gin.Context) {
 			RealnameHandler.GetRealnameInfo(c, db)
 		})
-		apiV2Router.POST("/realname/post", func(c *gin.Context) {
+		apiV2Router.POST("/user/realname/post", func(c *gin.Context) {
 			RealnameHandler.RealnameHandler(c, db)
 		})
 		apiV2Router.GET("/tunnel/list", func(c *gin.Context) {
@@ -80,6 +80,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 		apiV2Router.GET("/node/list", func(c *gin.Context) {
 			TunnelHandler.HandleGetNodeList(c, db)
+		})
+		apiV2Router.POST("/user/reset_password", func(c *gin.Context) {
+			UserHandler.HandleResetPassword(c, db)
 		})
 	}
 	apiV3Router := r.Group("/api/v3")
