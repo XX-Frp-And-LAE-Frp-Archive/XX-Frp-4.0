@@ -3,6 +3,7 @@ package UserHandler
 import (
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -25,18 +26,18 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 	username := c.PostForm("username")
 	// 检查 邮箱 用户名 是否合法
 	if register.IsValidEmail(email) == false || register.IsValidUsername(username) == false {
-		c.JSON(400, gin.H{"error": "邮箱或用户名不合法"})
+		respond.Respond(c, 403, "邮箱或用户名不合法", 0)
 		return
 	}
 	// 检查邮箱是否存在
 	var user User
 	if err := db.Where("email = ?", email).First(&user).Error; err != nil {
-		c.JSON(400, gin.H{"error": "此邮箱未注册"})
+		respond.Respond(c, 403, "该邮箱未注册", 0)
 		return
 	}
 	// 检测用户名和邮箱是否匹配
 	if user.Username != username {
-		c.JSON(400, gin.H{"error": "用户名和邮箱不匹配"})
+		respond.Respond(c, 403, "用户名和密码不匹配", 0)
 		return
 	}
 	// 检测15分钟内是否已经发送过邮件
@@ -44,14 +45,14 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 	if err := db.Table("findpass").Where("username = ?", username).First(&findpass).Error; err == nil {
 		// 如果已经发送过邮件
 		if time.Now().Unix()-findpass.Time < 900 {
-			c.JSON(400, gin.H{"error": "15分钟内已经发送过邮件"})
+			respond.Respond(c, 403, "15分钟内已发送过邮件", 0)
 			return
 		}
 		// 如果已经发送过邮件但是已经超过15分钟
 		if time.Now().Unix()-findpass.Time > 900 {
 			// 删除findpass表中的token
 			if err := db.Table("findpass").Delete(&findpass).Error; err != nil {
-				c.JSON(500, gin.H{"error": "Failed to delete findpass"})
+				respond.Respond(c, 500, "删除旧数据失败", 0)
 				return
 			}
 		}
@@ -67,10 +68,10 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 	// 发送邮件
 	err := SendEmail(email, token)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to send email"})
+		respond.Respond(c, 500, "发送错误", 0)
 		return
 	}
-	c.JSON(200, gin.H{"message": "邮件已发送"})
+	respond.Respond(c, 200, "发送成功", 0)
 }
 
 func SendEmail(email string, token string) error {
@@ -95,11 +96,11 @@ func SendEmail(email string, token string) error {
 func GenerateMessageId() string {
 	timestamp := time.Now().Unix()
 	randomNum := rand.Intn(1000)
-	messageId := fmt.Sprintf("<%d.%d@yourdomain.com>", timestamp, randomNum)
+	messageId := fmt.Sprintf("<%d.%d@mcserverx.com>", timestamp, randomNum)
 	return messageId
 }
 
-func HandleResetPassword(c *gin.Context, db *gorm.DB) {
+func HandleForgotResetPassword(c *gin.Context, db *gorm.DB) {
 	// 获取动态路由中的token
 	token := c.Param("link")
 	// 获取表单数据中的新密码
@@ -113,15 +114,15 @@ func HandleResetPassword(c *gin.Context, db *gorm.DB) {
 	// 检查token是否存在 findpass 表中 并获取username
 	var findpass Findpass
 	if err := db.Table("findpass").Where("link = ?", token).First(&findpass).Error; err != nil {
-		c.JSON(400, gin.H{"error": "token不存在"})
+		respond.Respond(c, 403, "Token不存在", 0)
 		return
 	}
 	// 检查token是否过期
 	if findpass.Time+900 < time.Now().Unix() {
-		c.JSON(400, gin.H{"error": "token已过期"})
+		respond.Respond(c, 403, "Token已过期", 0)
 		// 删除findpass表中的token
 		if err := db.Table("findpass").Delete(&findpass).Error; err != nil {
-			c.JSON(400, gin.H{"error": "Failed to delete findpass"})
+			respond.Respond(c, 500, "Token删除失败", 0)
 			return
 		}
 		return
@@ -129,25 +130,24 @@ func HandleResetPassword(c *gin.Context, db *gorm.DB) {
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(400, gin.H{"message": "密码加密失败"})
+		respond.Respond(c, 500, "密码加密失败", 0)
 		return
 	}
 	// 更新对应用户的密码
 	if err := db.Model(&User{}).Where("username = ?", findpass.Username).Update("password", string(hashedPassword)).Error; err != nil {
-		c.JSON(400, gin.H{"error": "Failed to update password"})
+		respond.Respond(c, 500, "更新密码失败", 0)
 		return
 	}
 	// 删除findpass表中的token
 	if err := db.Table("findpass").Delete(&findpass).Error; err != nil {
-		c.JSON(400, gin.H{"error": "Failed to delete findpass"})
+		respond.Respond(c, 500, "Token删除失败", 0)
 		return
 	}
 	// 更新 token
 	NewToken := register.GenerateToken()
 	// 在数据库tokens表中更新token
 	db.Model(&register.Token{}).Where("username = ?", findpass.Username).Update("token", NewToken)
-	c.JSON(200, gin.H{
-		"message": "密码重置成功，已为您自动/重新登录",
-		"token":   NewToken,
+	respond.Respond(c, 200, "密码重置成功，已为您自动重新登录", gin.H{
+		"token": NewToken,
 	})
 }

@@ -2,6 +2,7 @@ package StartHandler
 
 import (
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/ahmr-bot/ME-Frp/pkg/router/TunnelHandler"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -65,20 +66,14 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 	//id 为 | 后面的部分
 	nodeid := apitokenSlice[1]
 	if token != conf.Server.Token {
-		c.JSON(403, gin.H{
-			"status":  403,
-			"message": "token 验证失败",
-		})
+		respond.Respond(c, 503, "Token 错误", 0)
 		return
 	}
 	// 读取node表id字段 判断id是否存在
 	var node Node
 	result := db.Where("id = ?", nodeid).First(&node)
 	if result.Error != nil {
-		c.JSON(403, gin.H{
-			"status":  403,
-			"message": "nodeid 不存在",
-		})
+		respond.Respond(c, 503, "节点不存在", 0)
 		return
 	}
 	// 根据 action 的值进行判断
@@ -88,48 +83,34 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 		var tokenRecord Token
 		result := db.Where("token = ?", user).First(&tokenRecord)
 		if result.Error != nil {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "user  错误",
-			})
+			respond.Respond(c, 403, "user 错误", 0)
 			return
 		}
 		// 判断用户status是否为0
 		if tokenRecord.status == true {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "token  已被禁用",
-			})
+			respond.Respond(c, 403, "已被封禁", 0)
 			return
 		}
 		// 判断用户是否有权限使用该节点
 		var node Node
 		nodeResult := db.First(&node, "id = ?", nodeid)
 		if nodeResult.Error != nil {
-			c.JSON(500, gin.H{
-				"status":  500,
-				"message": nodeResult.Error.Error()},
-			)
+			respond.Respond(c, 403, "无权使用此节点", 0)
 			return
 		}
 		// 通过 tokenRecord.Username 查询用户组
 		var user User
 		userResult := db.First(&user, "username = ?", tokenRecord.Username)
 		if userResult.Error != nil {
-			c.JSON(500, gin.H{
-				"status":  500,
-				"message": userResult.Error.Error(),
-			})
+			respond.Respond(c, 403, "未找到用户", 0)
 			return
 		}
 		// 判断用户是否有权限使用该节点
 		if !TunnelHandler.CheckGroup(node.Group, user.Group) {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "你没有权限使用该节点",
-			})
+			respond.Respond(c, 403, "你无权使用此节点", 0)
 			return
 		}
+		// 此处大抵是还不能改（）,直接写成规范格式罢
 		c.JSON(200, gin.H{
 			"status":  200,
 			"success": true,
@@ -140,18 +121,12 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 		var tokenRecord Token
 		result := db.Where("token = ?", user).First(&tokenRecord)
 		if result.Error != nil {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "user  错误",
-			})
+			respond.Respond(c, 403, "user 错误", 0)
 			return
 		}
 		// 判断用户status是否为0
 		if tokenRecord.status == true {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "token  已被禁用",
-			})
+			respond.Respond(c, 403, "已被封禁", 0)
 			return
 		}
 		ProxyType := c.Query("proxy_type")
@@ -166,18 +141,12 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			var proxy Proxy
 			proxyResult := db.First(&proxy, "username = ? AND proxy_type = ? AND proxy_name = ? AND remote_port = ?", tokenRecord.Username, ProxyType, ProxyName, RemotePort)
 			if proxyResult.Error != nil {
-				c.JSON(403, gin.H{
-					"status":  403,
-					"message": "该条记录不存在",
-				})
+				respond.Respond(c, 403, "隧道不存在", 0)
 				return
 			}
 			// 判断用户是否有权限使用该隧道
 			if proxy.Status == true {
-				c.JSON(403, gin.H{
-					"status":  403,
-					"message": "该隧道已被禁用",
-				})
+				respond.Respond(c, 403, "隧道被禁用", 0)
 				return
 			}
 		} else if ProxyType == "http" || ProxyType == "https" {
@@ -186,25 +155,16 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			var proxy Proxy
 			proxyResult := db.First(&proxy, "username = ? AND proxy_type = ? AND proxy_name = ? AND domain = ?", tokenRecord.Username, ProxyType, ProxyName, Domain)
 			if proxyResult.Error != nil {
-				c.JSON(403, gin.H{
-					"status":  403,
-					"message": "该条记录不存在",
-				})
+				respond.Respond(c, 403, "隧道不存在 ", 0)
 				return
 			}
 			// 判断用户是否有权限使用该隧道
 			if proxy.Status == true {
-				c.JSON(403, gin.H{
-					"status":  403,
-					"message": "该隧道已被禁用",
-				})
+				respond.Respond(c, 403, "隧道被禁用", 0)
 				return
 			}
 		} else {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "proxy_type 错误",
-			})
+			respond.Respond(c, 403, "隧道类型不支持", 0)
 			return
 		}
 		run_id := c.Query("run_id")
@@ -213,16 +173,14 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 		var proxy Proxy
 		proxyResult := db.First(&proxy, "username = ? AND proxy_type = ? AND proxy_name = ?", tokenRecord.Username, ProxyType, ProxyName)
 		if proxyResult.Error != nil {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "该条记录不存在",
-			})
+			respond.Respond(c, 403, "隧道不存在", 0)
 			return
 		}
 		// 获取该条记录的run_id
 		// 存储到数据库中
 		proxy.RunID = run_id
 		db.Save(&proxy)
+		// 依旧不能改，嘤嘤嘤……
 		c.JSON(200, gin.H{
 			"status":  200,
 			"success": true,
@@ -233,18 +191,12 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 		var tokenRecord Token
 		result := db.Where("token = ?", user).First(&tokenRecord)
 		if result.Error != nil {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "user  错误",
-			})
+			respond.Respond(c, 403, "user 错误", 0)
 			return
 		}
 		// 判断用户status是否为0
 		if tokenRecord.status == true {
-			c.JSON(403, gin.H{
-				"status":  403,
-				"message": "token  已被禁用",
-			})
+			respond.Respond(c, 403, "已被封禁", 0)
 			return
 		}
 		// 通过tokenRecord.Username查询 limit表中的记录
@@ -255,23 +207,17 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			var user User
 			userResult := db.First(&user, "username = ?", tokenRecord.Username)
 			if userResult.Error != nil {
-				c.JSON(403, gin.H{
-					"status":  403,
-					"message": "user  错误",
-				})
+				respond.Respond(c, 403, "user 错误", 0)
 				return
 			}
 			// 通过 user.group 查询 group 表中的记录
 			var group Group
 			groupResult := db.First(&group, "name = ?", user.Group)
 			if groupResult.Error != nil {
-				c.JSON(403, gin.H{
-					"status":  403,
-					"message": "group  错误",
-				})
+				respond.Respond(c, 403, "group 错误", 0)
 				return
 			}
-			// 返回 group 表中的 limit 字段
+			// 返回 group 表中的 limit 字段，还是不能改
 			c.JSON(200, gin.H{
 				"status":  200,
 				"max-in":  group.Inbound,
@@ -279,7 +225,7 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			})
 			return
 		}
-		// 返回 limit 表中的 inbound outbound 字段
+		// 返回 limit 表中的 inbound outbound 字段，还是不能改
 		c.JSON(200, gin.H{
 			"status":  200,
 			"max-in":  limit.Inbound,

@@ -1,6 +1,7 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"strings"
@@ -17,7 +18,7 @@ func HandleGetNodeList(c *gin.Context, db *gorm.DB) {
 	var user User
 	db.Where("username = ?", username).First(&user)
 	if user.ID == 0 {
-		c.JSON(404, gin.H{"error": "user not found"})
+		respond.Respond(c, 403, "未找到该用户", 0)
 		return
 	}
 	// 获取所有节点
@@ -38,5 +39,5 @@ func HandleGetNodeList(c *gin.Context, db *gorm.DB) {
 		}
 	}
 	// 返回节点列表
-	c.JSON(200, gin.H{"data": nodeList})
+	respond.Respond(c, 200, "获取成功", nodeList)
 }

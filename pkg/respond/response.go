@@ -14,7 +14,7 @@ type Response struct {
 // Response 返回的 API 响应
 func Respond(c *gin.Context, code int, message string, data interface{}) {
 	res := gin.H{
-		"status":    code,
+		"status":  code,
 		"message": message,
 	}
 

@@ -1,9 +1,9 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"net/http"
 	"regexp"
 )
 
@@ -14,14 +14,14 @@ func GetTunnelByID(c *gin.Context, db *gorm.DB) {
 	var proxy Proxy
 	result := db.First(&proxy, "username = ? AND id = ?", username, tunnelid)
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		respond.Respond(c, 403, "未找到隧道", 0)
 		return
 	}
 	// 读取代理的node值 然后根据node值去查询node表 获取node的ip和port和name然后返回
 	var node Node
 	nodeResult := db.First(&node, proxy.Node)
 	if nodeResult.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": nodeResult.Error.Error()})
+		respond.Respond(c, 403, "未找到该节点", 0)
 		return
 	}
 	re := regexp.MustCompile(`"([^"]+)"`)
@@ -34,5 +34,5 @@ func GetTunnelByID(c *gin.Context, db *gorm.DB) {
 	proxy.NodeHostname = node.Hostname
 	proxy.NodePort = node.Port
 	proxy.NodeToken = node.Token
-	c.JSON(http.StatusOK, proxy)
+	respond.Respond(c, 200, "Success!", proxy)
 }

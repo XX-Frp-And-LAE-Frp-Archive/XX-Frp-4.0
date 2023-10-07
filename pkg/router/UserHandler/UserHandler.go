@@ -3,9 +3,9 @@ package UserHandler
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 type UserInfo struct {
@@ -67,7 +67,7 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 		var group Group
 		groupResult := db.Table("groups").Where("name = ?", groupName).First(&group)
 		if groupResult.Error != nil {
-			c.JSON(http.StatusNotFound, gin.H{"message": "Group not found"})
+			respond.Respond(c, 500, "用户组不存在，请联系管理员", 0)
 			return
 		}
 		user.Proxies = group.Proxies

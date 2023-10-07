@@ -1,6 +1,7 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"regexp"
@@ -14,14 +15,15 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 	var nodeInfo Node
 	result := db.First(&nodeInfo, node)
 	if result.Error != nil {
-		c.JSON(500, gin.H{"error": result.Error.Error()})
+		respond.Respond(c, 500, "未找到该节点", 0)
 		return
 	}
 	//通过 username 和 nodeid 在proxies表中查询到对应的代理信息 并遍历
 	var proxies []Proxy
 	proxyResult := db.Find(&proxies, "username = ? AND node = ?", username, node)
 	if proxyResult.Error != nil {
-		c.JSON(500, gin.H{"error": proxyResult.Error.Error()})
+		respond.Respond(c, 403, "未找到该隧道", 0)
+
 		return
 	}
 	// 生成ini配置文件
@@ -56,6 +58,7 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 		conf += "\n"
 
 	}
+	// 直接ini
 	c.String(200, conf)
 }
 func GetConfByID(c *gin.Context, db *gorm.DB) {
@@ -66,12 +69,12 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	var proxy Proxy
 	result := db.First(&proxy, id)
 	if result.Error != nil {
-		c.JSON(500, gin.H{"error": result.Error.Error()})
+		respond.Respond(c, 403, "未找到该隧道", 0)
 		return
 	}
 	// 判断是否有权限
 	if proxy.Username != username {
-		c.JSON(403, gin.H{"error": "Forbidden"})
+		respond.Respond(c, 403, "这不是你的隧道", 0)
 		return
 	}
 
@@ -79,7 +82,7 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	var nodeInfo Node
 	nodeResult := db.First(&nodeInfo, proxy.Node)
 	if nodeResult.Error != nil {
-		c.JSON(500, gin.H{"error": nodeResult.Error.Error()})
+		respond.Respond(c, 500, "节点信息获取错误", 0)
 		return
 	}
 	// 生成ini配置文件
@@ -110,5 +113,6 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	}
 	conf += "use_encryption = true\nuse_compression = true\n"
 	conf += "\n"
+	// 直接返回ini
 	c.String(200, conf)
 }

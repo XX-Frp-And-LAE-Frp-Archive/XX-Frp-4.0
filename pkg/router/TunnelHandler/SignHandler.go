@@ -1,11 +1,11 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/ahmr-bot/ME-Frp/pkg/router/UserHandler"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"math/rand"
-	"net/http"
 	"time"
 )
 
@@ -32,7 +32,7 @@ func HandleSignGet(c *gin.Context, db *gorm.DB) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": sign})
+	respond.Respond(c, 200, "Success!", sign)
 }
 func HandleSignPost(c *gin.Context, db *gorm.DB) {
 	// 获取中间件传递的用户名
@@ -54,7 +54,8 @@ func HandleSignPost(c *gin.Context, db *gorm.DB) {
 
 		// 检查是否满足签到条件（每隔24小时才能签到）
 		if currentDate-lastSignDate < 24*60*60 {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "You can only sign once every 24 hours"})
+			respond.Respond(c, 403, "24小时只能签到一次", 0)
+
 			return
 		}
 
@@ -74,7 +75,8 @@ func HandleSignPost(c *gin.Context, db *gorm.DB) {
 	var user UserHandler.User
 	result = db.Table("users").Where("username = ?", username).First(&user)
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		respond.Respond(c, 403, "未找到该用户", 0)
+
 		return
 	}
 	user.Traffic += randomTraffic * 1024
@@ -85,5 +87,7 @@ func HandleSignPost(c *gin.Context, db *gorm.DB) {
 	} else {
 		db.Table("sign").Save(&sign)
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Sign successfully", "traffic": randomTraffic})
+	respond.Respond(c, 200, "签到成功", gin.H{
+		"traffic": randomTraffic,
+	})
 }

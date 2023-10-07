@@ -1,6 +1,7 @@
 package UserHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -11,9 +12,7 @@ func HandleRefreshToken(c *gin.Context, db *gorm.DB) {
 	NewToken := register.GenerateToken()
 	// 在数据库tokens表中更新token
 	db.Model(&register.Token{}).Where("username = ?", username).Update("token", NewToken)
-	c.JSON(200, gin.H{
-		"code":     200,
-		"msg":      "刷新成功",
+	respond.Respond(c, 200, "Token更新成功", gin.H{
 		"newToken": NewToken,
 	})
 }
