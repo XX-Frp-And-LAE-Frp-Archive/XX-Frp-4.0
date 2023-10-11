@@ -11,7 +11,7 @@ type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// Response 返回的 API 响应
+// Respond Response 返回的 API 响应
 func Respond(c *gin.Context, code int, message string, data interface{}) {
 	res := gin.H{
 		"status":  code,

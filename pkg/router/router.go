@@ -17,7 +17,7 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 	// v4 版本 API
 	apiPublicRouter := r.Group("/api/v4/public")
 	{
-		apiPublicRouter.POST("/auth/login", func(c *gin.Context) {
+		apiPublicRouter.POST("/verify/login", func(c *gin.Context) {
 			UserHandler.HandleLogin(c, db)
 		})
 		apiPublicRouter.GET("/info/sponsor", func(c *gin.Context) {
@@ -26,16 +26,16 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiPublicRouter.GET("/info/statistics", func(c *gin.Context) {
 			InfoHandler.HandleStatistics(c)
 		})
-		apiPublicRouter.POST("/auth/reg/email", func(c *gin.Context) {
+		apiPublicRouter.POST("/verify/register/email", func(c *gin.Context) {
 			register.HandleEmail(c, db)
 		})
-		apiPublicRouter.POST("/auth/register", func(c *gin.Context) {
+		apiPublicRouter.POST("/verify/register", func(c *gin.Context) {
 			register.HandleRegister(c, db)
 		})
-		apiPublicRouter.POST("/auth/forgot_password", func(c *gin.Context) {
+		apiPublicRouter.POST("/verify/forgot_password", func(c *gin.Context) {
 			UserHandler.HandleForgotPassword(c, db)
 		})
-		apiPublicRouter.POST("/auth/reset_password/:link", func(c *gin.Context) {
+		apiPublicRouter.POST("/verify/reset_password/:link", func(c *gin.Context) {
 			UserHandler.HandleForgotResetPassword(c, db)
 		})
 
