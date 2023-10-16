@@ -95,6 +95,7 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 	}
 	// 考虑到地址更新后 简单启动受到影响，故保留 v2 版本简单启动的一部分
 	apiV2Router := r.Group("/api/v2")
+	apiV2Router.Use(middleware.AuthMiddleware(db))
 	{
 		apiV2Router.GET("/tunnel/conf/id/:id", func(c *gin.Context) {
 			TunnelHandler.GetConfByID(c, db)
