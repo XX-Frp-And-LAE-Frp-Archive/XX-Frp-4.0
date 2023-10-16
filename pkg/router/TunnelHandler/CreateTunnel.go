@@ -179,7 +179,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		respond.Respond(c, 500, "写入失败", 0)
 		return
 	}
-	respond.Respond(c, 500, "创建成功", 0)
+	respond.Respond(c, 200, "创建成功", 0)
 }
 func CheckGroup(nodeGroup string, userGroup string) bool {
 	// 不去除分号 直接判断是否包含
