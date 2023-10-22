@@ -102,11 +102,10 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 	}
 	// 原樱花面板（ME Frp 1.0） API（v1）
-	apiV2ProxyURL := "http://admin.mefrp.com:8123/api/"
-	apiV1Router := r.Group("api/v1")
-	{
-		apiV1Router.Use(reverseProxy(apiV2ProxyURL))
-	}
+	// apiV1ProxyURL := "http://admin.mefrp.com:8123/api/"
+	r.GET("/api/v1/*filepath", func(c *gin.Context) {
+		reverseProxy(c)
+	})
 
 	// 监听默认路由
 	r.NoRoute(func(c *gin.Context) {
