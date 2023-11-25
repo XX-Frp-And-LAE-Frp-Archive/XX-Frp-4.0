@@ -1,18 +1,24 @@
 package RealnameHandler
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -49,6 +55,21 @@ func IsValidIDCard(idcard string) bool {
 	}
 	return true
 }
+func calcAuthorization(source string, secretId string, secretKey string) (auth string, datetime string, err error) {
+	timeLocation, _ := time.LoadLocation("Etc/GMT")
+	datetime = time.Now().In(timeLocation).Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	signStr := fmt.Sprintf("x-date: %s\nx-source: %s", datetime, source)
+
+	// hmac-sha1
+	mac := hmac.New(sha1.New, []byte(secretKey))
+	mac.Write([]byte(signStr))
+	sign := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+	auth = fmt.Sprintf("hmac id=\"%s\", algorithm=\"hmac-sha1\", headers=\"x-date x-source\", signature=\"%s\"",
+		secretId, sign)
+
+	return auth, datetime, nil
+}
 func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	username, _ := c.Get("username")
 	// 获取提交的表单中的名字和身份证号
@@ -81,12 +102,44 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		// 超过24小时删除对应用户的失败记录
 		db.Delete(&failrealname)
 	}
+	// 通过 api 调用 https://service-lbiior1h-1307960160.sh.apigw.tencentcs.com/release/idcard/verify 进行实名认证
+	// post请求参数为 name 和 idcard
+	// 返回值为 {"code":200,"msg":"success","data":{"result":1}}
+	// result为1表示实名认证成功 result为2表示不匹配 result为3表示暂无
+	// 通过 result 判断是否实名认证成功
+	// 通过 username 更新数据库中的 realname 和 idcard 字段
+	// 返回 {"code":200,"msg":"success"}
+
+	source := "market"
+	// 进行签名
 	conf := config.GetConfig()
-	url := "https://s.tji0.com/api/two?appid=" + conf.Realname.SecretID + "&appkey=" + conf.Realname.SecretKey + "&name=" + name + "&card=" + idcard
-	// 发送请求
-	resp, err := http.Get(url)
+	auth, datetime, err := calcAuthorization(source, conf.Realname.SecretID, conf.Realname.SecretKey)
+	// 拼接 body 数据
+	// body参数
+
+	// 使用 x-www-form-urlencoded 格式
+	postData := url.Values{}
+	postData.Add("name", name)
+	postData.Add("idcard", idcard)
+	// 发送 POST 请求 并使用 bodyParams 作为 body headers 作为请求头
+	// 创建一个请求对象，并设置请求方法、URL 和请求体
+	req, err := http.NewRequest("POST", "https://service-mxg591r7-1308811306.sh.apigw.tencentcs.com/release/v3/id_name/verify", strings.NewReader(postData.Encode()))
 	if err != nil {
-		respond.Respond(c, 500, "实名认证接口请求错误，请联系管理员", 0)
+		panic(err)
+	}
+	// 设置请求头
+	req.Header.Set("X-Source", source)
+	req.Header.Set("X-Date", datetime)
+	req.Header.Set("Authorization", auth)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// debug
+	// fmt.Println(auth)
+	// fmt.Println(datetime)
+	// fmt.Println(source)
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
 		panic(err)
 	}
 	// 关闭请求
@@ -97,17 +150,16 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		}
 	}(resp.Body)
 
-	body, err := io.ReadAll(resp.Body)
+	// 解析返回的 JSON 数据
+	var result VerifyResponse
+	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		respond.Respond(c, 500, "实名认证接口响应错误，请联系管理员", 0)
+		fmt.Println("解析响应异常:", err)
 		return
 	}
 
-	responseText := string(body)
 	// 判断实名认证结果
-
-	switch responseText {
-	case "0":
+	if result.Code == 200 && result.Data.Result == 1 {
 		// 使用base64加密 name
 		encodeName := base64.StdEncoding.EncodeToString([]byte(name))
 		// 使用base64加密 idcard
@@ -125,14 +177,20 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 		// 返回更新成功的消息
 		respond.Respond(c, 200, "认证成功", 0)
-	case "1":
+	} else if result.Code != 200 {
+		respond.Respond(c, 500, "实名认证接口错误，请联系管理员", 0)
+	} else if result.Data.Result == 2 || result.Data.Result == 3 {
 		// 将 username time 写入到 failrealname 表中
 		db.Create(&Failrealname{
 			Username: username.(string),
 			Time:     time.Now().Unix(),
 		})
 		// 返回实名认证失败的消息
-		respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
+		if result.Data.Result == 2 {
+			respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
+		} else {
+			respond.Respond(c, 400, "数据库信息缺失，请联系管理员或24小时重试", 0)
+		}
 	}
 }
 

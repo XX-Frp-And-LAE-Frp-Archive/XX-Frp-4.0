@@ -10,8 +10,22 @@ import (
 
 func HandleResetPassword(c *gin.Context, db *gorm.DB) {
 	// 获取表单数据中的新密码
+	oldPassword := c.PostForm("old_password")
 	newPassword := c.PostForm("password")
 	username, _ := c.Get("username")
+
+	user, err := findUserByUsernameOrEmail(username, db)
+	if err != nil {
+		respond.Respond(c, 403, "账户不存在!", 0)
+		return
+	}
+
+	// 验证密码
+	err = bcrypt.CompareHashAndPassword(user.Password, []byte(oldPassword))
+	if err != nil {
+		respond.Respond(c, 403, "旧密码错误!", 0)
+		return
+	}
 
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)

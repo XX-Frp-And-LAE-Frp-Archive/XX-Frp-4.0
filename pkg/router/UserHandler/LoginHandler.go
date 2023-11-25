@@ -64,7 +64,7 @@ func HandleLogin(c *gin.Context, db *gorm.DB) {
 }
 
 // 根据用户名或邮箱查询用户
-func findUserByUsernameOrEmail(usernameOrEmail string, db *gorm.DB) (*User, error) {
+func findUserByUsernameOrEmail(usernameOrEmail any, db *gorm.DB) (*User, error) {
 	user := &User{}
 	err := db.Where("username = ? OR email = ?", usernameOrEmail, usernameOrEmail).First(user).Error
 	if err != nil {

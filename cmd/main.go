@@ -56,6 +56,8 @@ func main() {
 	// 每天更新 traffic 数据库为 0
 	go cron.UpdateTrafficPeriodically(db)
 
+	go cron.UpdateSettingPeriodically(db)
+
 	// 加载所有路由
 	router.LoadRoutes(engine, db)
 

@@ -76,7 +76,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	if proxy.ProxyType == "http" || proxy.ProxyType == "https" {
-		if !IsValidDomain(proxy.Domain) {
+		if !IsValidDomain() {
 			respond.Respond(c, 403, "域名不合法", 0)
 			return
 		}
@@ -156,7 +156,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		}
 		// 检查 proxies 表中 用户选择的 node 的对应端口是否已经被占用
 		var proxyCount2 int64
-		db.Model(&Proxy{}).Where("node = ? AND remote_port = ?", proxy.Node, proxy.RemotePort).Count(&proxyCount2)
+		db.Model(&Proxy{}).Where("node = ? AND remote_port = ? proxy_type = ?", proxy.Node, proxy.RemotePort, proxy.ProxyType).Count(&proxyCount2)
 		if proxyCount2 > 0 {
 			respond.Respond(c, 403, "该远程端口已经被占用了哦", 0)
 			return
@@ -165,7 +165,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		// 检查 proxies 表中 用户选择的 node 的对应域名是否已经被占用
 		var proxyCount3 int64
 		domain := "[\"" + proxy.Domain + "\"]"
-		db.Model(&Proxy{}).Where("node = ? AND domain = ?", proxy.Node, domain).Count(&proxyCount3)
+		db.Model(&Proxy{}).Where("node = ? AND domain = ? AND proxy_type = ?", proxy.Node, domain, proxy.ProxyType).Count(&proxyCount3)
 		if proxyCount3 > 0 {
 			respond.Respond(c, 403, "该域名已被占用", 0)
 			return
@@ -241,11 +241,9 @@ func IsvalidPort(port string) bool {
 	}
 	return true
 }
-func IsValidDomain(domain string) bool {
+func IsValidDomain() bool {
 	// 使用正则表达式匹配域名格式
 	// regex := `/^[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(?:\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$/`
 	// match, _ := regexp.MatchString(regex, domain)
 	return true
 }
-
-// pa

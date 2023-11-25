@@ -38,6 +38,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiPublicRouter.POST("/verify/reset_password/:link", func(c *gin.Context) {
 			UserHandler.HandleForgotResetPassword(c, db)
 		})
+		apiPublicRouter.GET("/info/setting", func(c *gin.Context) {
+			InfoHandler.HandleSetting(c)
+		})
 
 	}
 	apiAuthRouter := r.Group("/api/v4/auth")
