@@ -3,6 +3,7 @@ package register
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -14,37 +15,7 @@ import (
 	"time"
 )
 
-// User 用户结构体
-type User struct {
-	Username string
-	Password string
-	Email    string
-	Traffic  int64
-	Group    string
-	Status   int
-	Regtime  int64
-}
-
-// Codes 验证码结构体
-type Codes struct {
-	Email string
-	Code  string
-	Time  int64
-}
-type Groups struct {
-	name    string
-	Traffic int64
-}
-
-// Token 定义Token结构体
-type Token struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Token    string `json:"token"`
-	Status   int
-}
-
-// 生成随机token
+// GenerateToken 生成随机token
 func GenerateToken() string {
 	// 生成当前时间戳
 	timestamp := time.Now().Unix()
@@ -90,7 +61,7 @@ func IsValidUsername(username string) bool {
 
 // 检查邮箱是否已经存在,不使用where查询，因为where查询会返回一个数组
 func checkEmail(email string, db *gorm.DB) bool {
-	var user User
+	var user define.User
 	db.First(&user, "email = ?", email)
 	lower := strings.ToLower(user.Email)
 	if lower == strings.ToLower(email) {
@@ -101,7 +72,7 @@ func checkEmail(email string, db *gorm.DB) bool {
 
 // 检查用户名是否已经注册
 func checkUsername(username string, db *gorm.DB) bool {
-	var user User
+	var user define.User
 	// 查找是否存在该用户
 	db.First(&user, "username = ?", username)
 	// fmt.Printf(user.Username)
@@ -148,7 +119,7 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	// 使用email作为key，从数据库codes表中获取验证码 并与用户输入的验证码进行比对
-	var codes Codes
+	var codes define.Code
 	db.Table("codes").Where("email = ?", email).First(&codes)
 	if codes.Code != code {
 		respond.Respond(c, 400, "注册失败，验证码错误！", 0)
@@ -176,18 +147,22 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 	regTime := time.Now().Unix()
 
 	// 从数据库 groups 表中获取 name 为 default 组的 traffic 字段
-	var groups Groups
+	var groups define.Groups
 	db.Table("groups").Where("name = ?", "default").First(&groups)
 	traffic := groups.Traffic
 
+	// 生成 token
+	token := GenerateToken()
+
 	// 创建用户对象
-	user := User{
+	user := define.User{
 		Username: username,
 		Email:    email,
 		Password: string(hashedPassword),
-		Status:   0,
+		Status:   false,
 		Group:    "default",
 		Traffic:  traffic,
+		Token:    token,
 		Regtime:  regTime,
 	}
 
@@ -197,21 +172,6 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 		respond.Respond(c, 500, "注册失败，用户写入错误！", 0)
 		return
 	}
-
-	// 读取数据库中自增的id
-	var id int
-	db.Table("users").Where("email = ?", email).First(&user).Scan(&id)
-	// 生成token
-	token := GenerateToken()
-	// 将token写入数据库表 tokens
-	tokenObj := Token{
-		ID:       id,
-		Username: username,
-		Token:    token,
-		Status:   0,
-	}
-	// 将token写入数据库表 tokens
-	result = db.Create(&tokenObj)
 
 	respond.Respond(c, 200, "注册成功", gin.H{
 		"token": token,

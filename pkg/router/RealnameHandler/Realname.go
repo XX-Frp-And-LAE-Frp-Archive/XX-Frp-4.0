@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	_struct "github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -50,7 +51,9 @@ func IsValidIDCard(idcard string) bool {
 	return true
 }
 func RealnameHandler(c *gin.Context, db *gorm.DB) {
-	username, _ := c.Get("username")
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(_struct.User)
 	// 获取提交的表单中的名字和身份证号
 	name := c.PostForm("name")
 	idcard := c.PostForm("idcard")
@@ -65,15 +68,15 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	}
 	// 检查是否已经实名认证
 	var realname Realname
-	chachong := db.Where("username = ?", username).First(&realname)
-	if chachong.RowsAffected != 0 {
+	exist := db.Where("username = ?", user.Username).First(&realname)
+	if exist.RowsAffected != 0 {
 		respond.Respond(c, 400, "已经实名认证!", 0)
 		return
 	}
 	// 检查24小时内是否有失败记录
 	var failrealname Failrealname
-	fangshua := db.Where("username = ?", username).First(&failrealname)
-	if fangshua.RowsAffected != 0 {
+	fails := db.Where("username = ?", user.Username).First(&failrealname)
+	if fails.RowsAffected != 0 {
 		if time.Now().Unix()-failrealname.Time < 86400 {
 			respond.Respond(c, 400, "24小时只能认证一次！", 0)
 			return
@@ -115,20 +118,20 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 		// 在 realname 表的创建一行 写入 username name idcard time 信息
 		db.Create(&Realname{
-			Username: username.(string),
+			Username: user.Username,
 			Name:     encodeName,
 			IDCard:   encodeIdcard,
 			Time:     time.Now().Unix(),
 		})
 		// 更新 users 表的 group 为 realname
-		db.Model(&User{}).Where("username = ?", username).Update("group", "realname")
+		db.Model(&User{}).Where("username = ?", user.Username).Update("group", "realname")
 
 		// 返回更新成功的消息
 		respond.Respond(c, 200, "认证成功", 0)
 	case "1":
 		// 将 username time 写入到 failrealname 表中
 		db.Create(&Failrealname{
-			Username: username.(string),
+			Username: user.Username,
 			Time:     time.Now().Unix(),
 		})
 		// 返回实名认证失败的消息

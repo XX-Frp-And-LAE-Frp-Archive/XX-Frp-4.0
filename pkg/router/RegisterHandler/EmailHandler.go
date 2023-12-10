@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/gomail.v2"
@@ -14,18 +15,6 @@ import (
 	"strconv"
 	"time"
 )
-
-type CodeData struct {
-	Email string `json:"email"`
-	Code  string `json:"code"`
-	Time  string `json:"time"`
-}
-
-type Code struct {
-	Email string
-	Code  string
-	Time  int64
-}
 
 func HandleEmail(c *gin.Context, db *gorm.DB) {
 	// 获取表单数据
@@ -51,21 +40,21 @@ func HandleEmail(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	// 查询数据库中是否存在指定邮箱的记录
-	var existingRecord Code
+	var existingRecord define.Code
 
 	result := db.Where("email = ?", email).First(&existingRecord)
 	if result.Error == nil {
 		// 更新已存在的记录
 		existingRecord.Code = code
 		existingRecord.Time = time.Now().Unix()
-		err := db.Model(&existingRecord).Where("email = ?", email).Updates(Code{Code: existingRecord.Code, Time: existingRecord.Time}).Error
+		err := db.Model(&existingRecord).Where("email = ?", email).Updates(define.Code{Code: existingRecord.Code, Time: existingRecord.Time}).Error
 		if err != nil {
 			respond.Respond(c, 500, "验证码暂存错误，已发送的邮件请忽略，请联系管理员或重试！", 0)
 			return
 		}
 	} else if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// 创建新的记录
-		record := Code{
+		record := define.Code{
 			Email: email,
 			Code:  code,
 			Time:  time.Now().Unix(),

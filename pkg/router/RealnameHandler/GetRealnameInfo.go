@@ -1,6 +1,7 @@
 package RealnameHandler
 
 import (
+	_struct "github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -12,12 +13,9 @@ type User struct {
 }
 
 func GetRealnameInfo(c *gin.Context, db *gorm.DB) {
-	// 获取中间件传递的用户名
-	username, _ := c.Get("username")
-	// 获取数据库 users 表中的 group 字段
-	var user User
-	db.Model(&User{}).Where("username = ?", username).Select("group").Find(&user)
-	// 获取数据库 groups 表中的 realname 字段
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(_struct.User)
 	group := user.Group
 	if group == "admin" {
 		respond.Respond(c, 200, "Success!", gin.H{
@@ -29,7 +27,7 @@ func GetRealnameInfo(c *gin.Context, db *gorm.DB) {
 	} else if group == "realname" {
 		// 获取数据库 realname 表中的 time 字段 并将时间戳转换为时间
 		var realname Realname
-		db.Model(&Realname{}).Where("username = ?", username).Select("time").Find(&realname)
+		db.Model(&Realname{}).Where("username = ?", user.Username).Select("time").Find(&realname)
 		respond.Respond(c, 200, "Success!", gin.H{
 			"code":     200,
 			"realname": "已实名认证",

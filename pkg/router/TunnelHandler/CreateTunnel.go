@@ -1,8 +1,8 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
-	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net"
@@ -12,37 +12,14 @@ import (
 	"time"
 )
 
-type Group struct {
-	ID      int    `json:"id"`
-	Group   string `json:"group"`
-	Proxies int    `json:"proxies"`
-}
-type Limit struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Inbound  int    `json:"inbound"`
-	Outbound int    `json:"outbound"`
-	Proxies  int    `json:"proxies"`
-}
-
-type Proxies struct {
-	ID         int    `json:"id"`
-	Username   string `json:"username"`
-	ProxyName  string `json:"proxy_name"`
-	ProxyType  string `json:"proxy_type"`
-	LocalIP    string `json:"local_ip"`
-	LocalPort  string `json:"local_port"`
-	Domain     string `json:"domain"`
-	Node       string `json:"node"`
-	RemotePort string `json:"remote_port"`
-	Lastupdate int64  `json:"lastupdate"`
-}
-
 func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
-	username, _ := c.Get("username")
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(define.User)
+
 	// 从表单中获取数据
-	var proxy Proxies
-	proxy.Username = username.(string)
+	var proxy define.Proxies
+	proxy.Username = user.Username
 	proxy.ProxyName = c.PostForm("proxy_name")
 	proxy.ProxyType = c.PostForm("proxy_type")
 	proxy.LocalIP = c.PostForm("local_ip")
@@ -89,46 +66,40 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 
 	// 检查 单用户的代理名称是否重复
 	var proxyCount int64
-	db.Model(&Proxy{}).Where("username = ? AND proxy_name = ?", username, proxy.ProxyName).Count(&proxyCount)
+	db.Model(&define.Proxies{}).Where("username = ? AND proxy_name = ?", user.Username, proxy.ProxyName).Count(&proxyCount)
 	if proxyCount > 0 {
 		respond.Respond(c, 403, "隧道名重复", 0)
 		return
 	}
-	//在 users 表使用 username 获取 group 值 然后根据 group 值去查询 group 表中的 proxies 字段 如果 该用户已经拥有的代理数量大于等于 group 表中的 proxies 字段的值 则不允许创建
-	var user register.User
-	userResult := db.First(&user, "username = ?", username)
-	if userResult.Error != nil {
-		respond.Respond(c, 500, "无法查验用户", 0)
-		return
-	}
+
 	// 获取用户的 group 值
-	var group Group
+	var group define.Groups
 	groupResult := db.First(&group, "name = ?", user.Group)
 	if groupResult.Error != nil {
 		respond.Respond(c, 500, "无法查验组别", 0)
 		return
 	}
 	//  limits 表中查询该用户是否有自定义的限制
-	var limit Limit
-	limitResult := db.First(&limit, "username = ?", username)
+	var limit define.Limit
+	limitResult := db.First(&limit, "username = ?", user.Username)
 	if limitResult.Error != nil {
 		limit.Proxies = group.Proxies
 	}
-	var proxies []Proxy
-	db.Find(&proxies, "username = ?", username)
+	var proxies []define.Proxies
+	db.Find(&proxies, "username = ?", user.Username)
 	if len(proxies) >= limit.Proxies {
 		respond.Respond(c, 403, "您的隧道数已上限", 0)
 		return
 	}
 	// 检查 node 是否存在
 	var nodeCount int64
-	db.Model(&Node{}).Where("id = ?", proxy.Node).Count(&nodeCount)
+	db.Model(&define.Node{}).Where("id = ?", proxy.Node).Count(&nodeCount)
 	if nodeCount == 0 {
 		respond.Respond(c, 403, "节点不存在", 0)
 		return
 	}
 	// 检查 nodes 表中对应的group值中是否包含该用户的group值
-	var node Node
+	var node define.Node
 	nodeResult := db.First(&node, "id = ?", proxy.Node)
 	if nodeResult.Error != nil {
 		respond.Respond(c, 500, "无法查验节点", 0)
@@ -156,7 +127,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		}
 		// 检查 proxies 表中 用户选择的 node 的对应端口是否已经被占用
 		var proxyCount2 int64
-		db.Model(&Proxy{}).Where("node = ? AND remote_port = ? proxy_type = ?", proxy.Node, proxy.RemotePort, proxy.ProxyType).Count(&proxyCount2)
+		db.Model(&define.Proxies{}).Where("node = ? AND remote_port = ? proxy_type = ?", proxy.Node, proxy.RemotePort, proxy.ProxyType).Count(&proxyCount2)
 		if proxyCount2 > 0 {
 			respond.Respond(c, 403, "该远程端口已经被占用了哦", 0)
 			return
@@ -165,7 +136,7 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		// 检查 proxies 表中 用户选择的 node 的对应域名是否已经被占用
 		var proxyCount3 int64
 		domain := "[\"" + proxy.Domain + "\"]"
-		db.Model(&Proxy{}).Where("node = ? AND domain = ? AND proxy_type = ?", proxy.Node, domain, proxy.ProxyType).Count(&proxyCount3)
+		db.Model(&define.Proxies{}).Where("node = ? AND domain = ? AND proxy_type = ?", proxy.Node, domain, proxy.ProxyType).Count(&proxyCount3)
 		if proxyCount3 > 0 {
 			respond.Respond(c, 403, "该域名已被占用", 0)
 			return

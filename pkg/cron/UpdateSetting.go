@@ -2,23 +2,18 @@ package cron
 
 import (
 	"fmt"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"gorm.io/gorm"
 	"log"
 	"time"
 )
 
-type Setting struct {
-	Type    string `json:"type"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
-}
+var SettingCache []define.Setting
 
-var SettingCache []Setting
-
-// 从数据库中更新数据到缓存
+// UpdateSettingPeriodically 从数据库中更新数据到缓存
 func UpdateSettingPeriodically(db *gorm.DB) {
 	for {
-		var settings []Setting
+		var settings []define.Setting
 		result := db.Find(&settings)
 		if result.Error != nil {
 			fmt.Println("Failed to retrieve data from database:", result.Error)

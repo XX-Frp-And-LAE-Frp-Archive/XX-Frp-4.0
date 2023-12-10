@@ -3,6 +3,7 @@ package UserHandler
 import (
 	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	register "github.com/ahmr-bot/ME-Frp/pkg/router/RegisterHandler"
 	"github.com/gin-gonic/gin"
@@ -12,12 +13,6 @@ import (
 	"math/rand"
 	"time"
 )
-
-type Findpass struct {
-	Username string `gorm:"primaryKey"`
-	Link     string
-	Time     int64
-}
 
 func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 	// 获取表单数据中的邮箱
@@ -30,7 +25,7 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	// 检查邮箱是否存在
-	var user User
+	var user define.User
 	if err := db.Where("email = ?", email).First(&user).Error; err != nil {
 		respond.Respond(c, 403, "该邮箱未注册!", 0)
 		return
@@ -41,7 +36,7 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	// 检测15分钟内是否已经发送过邮件
-	var findpass Findpass
+	var findpass define.Findpass
 	if err := db.Table("findpass").Where("username = ?", username).First(&findpass).Error; err == nil {
 		// 如果已经发送过邮件
 		if time.Now().Unix()-findpass.Time < 900 {
@@ -60,7 +55,7 @@ func HandleForgotPassword(c *gin.Context, db *gorm.DB) {
 	// 生成重置密码的token
 	token := register.GenerateToken()
 	// 将username token time存入数据库 findpass 表中 而不是 findpasses 表中
-	db.Table("findpass").Create(&Findpass{
+	db.Table("findpass").Create(&define.Findpass{
 		Username: username,
 		Link:     token,
 		Time:     time.Now().Unix(),
@@ -112,7 +107,7 @@ func HandleForgotResetPassword(c *gin.Context, db *gorm.DB) {
 	//}
 
 	// 检查token是否存在 findpass 表中 并获取username
-	var findpass Findpass
+	var findpass define.Findpass
 	if err := db.Table("findpass").Where("link = ?", token).First(&findpass).Error; err != nil {
 		respond.Respond(c, 403, "Token不存在!", 0)
 		return
@@ -134,7 +129,7 @@ func HandleForgotResetPassword(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	// 更新对应用户的密码
-	if err := db.Model(&User{}).Where("username = ?", findpass.Username).Update("password", string(hashedPassword)).Error; err != nil {
+	if err := db.Model(&define.User{}).Where("username = ?", findpass.Username).Update("password", string(hashedPassword)).Error; err != nil {
 		respond.Respond(c, 500, "更新密码失败!", 0)
 		return
 	}
@@ -145,8 +140,8 @@ func HandleForgotResetPassword(c *gin.Context, db *gorm.DB) {
 	}
 	// 更新 token
 	NewToken := register.GenerateToken()
-	// 在数据库tokens表中更新token
-	db.Model(&register.Token{}).Where("username = ?", findpass.Username).Update("token", NewToken)
+	// 在数据库users表中更新token
+	db.Model(&define.User{}).Where("username = ?", findpass.Username).Update("token", NewToken)
 	respond.Respond(c, 200, "密码重置成功，已为您自动重新登录!", gin.H{
 		"token": NewToken,
 	})

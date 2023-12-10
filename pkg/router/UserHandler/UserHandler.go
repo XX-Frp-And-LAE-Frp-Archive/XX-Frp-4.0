@@ -3,40 +3,11 @@ package UserHandler
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
-
-type UserInfo struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	Username string `gorm:"varchar(255); not null" json:"username"`
-	Password string `gorm:"varchar(255); not null" json:"-"`
-	Email    string `gorm:"varchar(255); not null" json:"email"`
-	EmailMD5 string `gorm:"-" json:"email_md5"`
-	Traffic  int64  `json:"traffic"`
-	Proxies  int    `json:"proxies"`
-	Group    string `gorm:"varchar(255); not null" json:"group"`
-	RegTime  int    `json:"reg_time"`
-	Status   int    `gorm:"varchar(255); not null" json:"status"`
-	Outbound int64  `json:"outbound"`
-	Inbound  int    `json:"inbound"`
-}
-type Limit struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	Username string `gorm:"varchar(255); not null" json:"username"`
-	Outbound int64  `json:"outbound"`
-	Inbound  int    `json:"inbound"`
-	Proxies  int    `json:"proxies"`
-}
-type Group struct {
-	ID         uint   `gorm:"primaryKey" json:"id"`
-	Name       string `gorm:"varchar(255); not null" json:"name"`
-	Outbound   int    `json:"outbound"`
-	Inbound    int    `json:"inbound"`
-	Proxies    int    `json:"proxies"`
-	CreateTime string `gorm:"varchar(255); not null" json:"create_time"`
-}
 
 func HandleUser(c *gin.Context, db *gorm.DB) {
 	// 获取中间件传递的用户名
@@ -46,7 +17,7 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	var user UserInfo
+	var user define.User
 	result := db.Table("users").Where("username = ?", username).First(&user)
 	if result.Error != nil {
 		return
@@ -55,16 +26,16 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 	groupName := user.Group
 
 	// 根据用户名查询 limit 表
-	var limitUser Limit
+	var limitUser define.Limit
 	limitResult := db.Table("limits").Where("username = ?", user.Username).First(&limitUser)
 	if limitResult.Error == nil {
 		// 如果存在对应记录，则返回对应的 outbound 和 inbound proxies 值
 		user.Proxies = limitUser.Proxies
-		user.Outbound = limitUser.Outbound
+		user.Outbound = int64(limitUser.Outbound)
 		user.Inbound = limitUser.Inbound
 	} else {
 		// 如果不存在对应记录，则根据用户组查询 groups 表，找到对应的 outbound 和 inbound proxies 值
-		var group Group
+		var group define.Groups
 		groupResult := db.Table("groups").Where("name = ?", groupName).First(&group)
 		if groupResult.Error != nil {
 			respond.Respond(c, 500, "用户组不存在，请联系管理员", 0)

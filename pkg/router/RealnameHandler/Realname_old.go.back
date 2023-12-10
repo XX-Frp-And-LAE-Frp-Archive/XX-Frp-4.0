@@ -86,15 +86,15 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	}
 	// 检查是否已经实名认证
 	var realname Realname
-	chachong := db.Where("username = ?", username).First(&realname)
-	if chachong.RowsAffected != 0 {
+	exist := db.Where("username = ?", username).First(&realname)
+	if exist.RowsAffected != 0 {
 		respond.Respond(c, 400, "已经实名认证!", 0)
 		return
 	}
 	// 检查24小时内是否有失败记录
 	var failrealname Failrealname
-	fangshua := db.Where("username = ?", username).First(&failrealname)
-	if fangshua.RowsAffected != 0 {
+	fails := db.Where("username = ?", username).First(&failrealname)
+	if fails.RowsAffected != 0 {
 		if time.Now().Unix()-failrealname.Time < 86400 {
 			respond.Respond(c, 400, "24小时只能认证一次！", 0)
 			return

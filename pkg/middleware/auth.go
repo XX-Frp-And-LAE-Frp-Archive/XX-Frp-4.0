@@ -1,17 +1,12 @@
 package middleware
 
 import (
+	_struct "github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"strings"
 )
-
-type Token struct {
-	ID       uint   `gorm:"primaryKey"`
-	Token    string `gorm:"unique"`
-	Username string
-}
 
 func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -28,17 +23,14 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 			token = strings.TrimPrefix(token, "Bearer ")
 
 			// 查询Token对应的用户名
-			var tokenData Token
-			result := db.Where("token = ?", token).First(&tokenData)
+			var userData _struct.User
+			result := db.Where("token = ?", token).First(&userData)
 			if result.Error != nil || result.RowsAffected == 0 {
 				respond.Respond(c, 401, "Token 不存在!", 0)
 				return
 			} else {
-
-				// 将用户名传递给下级路由
-				c.Set("username", tokenData.Username)
-				c.Set("token", token)
-
+				// 将用户信息传递给下级路由
+				c.Set("user", userData)
 				c.Next()
 			}
 		}

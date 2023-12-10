@@ -2,25 +2,18 @@ package cron
 
 import (
 	"fmt"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"gorm.io/gorm"
 	"log"
 	"time"
 )
 
-type Sponsor struct {
-	ID      int    `gorm:"primaryKey" json:"id"`
-	Email   string `json:"email"`
-	Name    string `json:"name"`
-	Thing   string `json:"thing"`
-	Comment string `json:"comment"`
-}
-
-var Cache []Sponsor
+var Cache []define.Sponsor
 
 // 从数据库中更新数据到缓存
 func UpdateDataPeriodically(db *gorm.DB) {
 	for {
-		var sponsors []Sponsor
+		var sponsors []define.Sponsor
 		result := db.Find(&sponsors)
 		if result.Error != nil {
 			fmt.Println("Failed to retrieve data from database:", result.Error)

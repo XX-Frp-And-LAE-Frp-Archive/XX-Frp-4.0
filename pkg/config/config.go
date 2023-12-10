@@ -2,39 +2,10 @@ package config
 
 import (
 	"github.com/BurntSushi/toml"
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 )
 
-type Config struct {
-	Server struct {
-		Host  string
-		Port  int
-		Name  string
-		Url   string
-		Token string
-	}
-	Debug struct {
-		Debug bool
-	}
-	Mysql struct {
-		User     string
-		Password string
-		Host     string
-		Port     string
-		Database string
-	}
-	Smtp struct {
-		Addr   string
-		Passwd string
-		Port   int
-		From   string
-	}
-	Realname struct {
-		SecretID  string
-		SecretKey string
-	}
-}
-
-var conf Config
+var conf define.Config
 
 func LoadConfig(file string) error {
 	_, err := toml.DecodeFile(file, &conf)
@@ -44,6 +15,6 @@ func LoadConfig(file string) error {
 	return err
 }
 
-func GetConfig() *Config {
+func GetConfig() *define.Config {
 	return &conf
 }

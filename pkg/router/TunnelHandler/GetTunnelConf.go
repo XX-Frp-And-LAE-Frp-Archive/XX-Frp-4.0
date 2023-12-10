@@ -1,6 +1,7 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -9,18 +10,20 @@ import (
 
 func GetConfByNode(c *gin.Context, db *gorm.DB) {
 	node := c.Param("node")
-	username, _ := c.Get("username")
-	user, _ := c.Get("token")
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(define.User)
+
 	// 通过nodeid 在nodes 表查询到对应的节点信息
-	var nodeInfo Node
+	var nodeInfo define.Node
 	result := db.First(&nodeInfo, node)
 	if result.Error != nil {
 		respond.Respond(c, 500, "未找到该节点", 0)
 		return
 	}
 	//通过 username 和 nodeid 在proxies表中查询到对应的代理信息 并遍历
-	var proxies []Proxy
-	proxyResult := db.Find(&proxies, "username = ? AND node = ?", username, node)
+	var proxies []define.Proxies
+	proxyResult := db.Find(&proxies, "username = ? AND node = ?", user.Username, node)
 	if proxyResult.Error != nil {
 		respond.Respond(c, 403, "未找到该隧道", 0)
 
@@ -33,7 +36,7 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 	conf += "token = " + nodeInfo.Token + "\n"
 	conf += "tcp_mux = true\n"
 	conf += "protocol = tcp\n"
-	conf += "user = " + user.(string) + "\n"
+	conf += "token = " + user.Token + "\n"
 	conf += "dns_server = 114.114.114.114\n"
 	conf += "\n"
 
@@ -63,23 +66,25 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 }
 func GetConfByID(c *gin.Context, db *gorm.DB) {
 	id := c.Param("id")
-	username, _ := c.Get("username")
-	user, _ := c.Get("token")
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(define.User)
+
 	// 通过 id 在proxies 表查询到对应的代理信息
-	var proxy Proxy
+	var proxy define.Proxy
 	result := db.First(&proxy, id)
 	if result.Error != nil {
 		respond.Respond(c, 403, "未找到该隧道", 0)
 		return
 	}
 	// 判断是否有权限
-	if proxy.Username != username {
+	if proxy.Username != user.Username {
 		respond.Respond(c, 403, "这不是你的隧道", 0)
 		return
 	}
 
 	// 通过nodeid 在nodes 表查询到对应的节点信息
-	var nodeInfo Node
+	var nodeInfo define.Node
 	nodeResult := db.First(&nodeInfo, proxy.Node)
 	if nodeResult.Error != nil {
 		respond.Respond(c, 500, "节点信息获取错误", 0)
@@ -92,7 +97,7 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	conf += "token = " + nodeInfo.Token + "\n"
 	conf += "tcp_mux = true\n"
 	conf += "protocol = tcp\n"
-	conf += "user = " + user.(string) + "\n"
+	conf += "token = " + user.Token + "\n"
 	conf += "dns_server = 114.114.114.114\n"
 	conf += "\n"
 

@@ -1,6 +1,7 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -8,17 +9,20 @@ import (
 )
 
 func GetTunnelByID(c *gin.Context, db *gorm.DB) {
-	username, _ := c.Get("username")
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(define.User)
+
 	// 获取动态路由的 tunnelid
 	tunnelid := c.Param("tunnelid")
-	var proxy Proxy
-	result := db.First(&proxy, "username = ? AND id = ?", username, tunnelid)
+	var proxy define.Proxy
+	result := db.First(&proxy, "username = ? AND id = ?", user.Username, tunnelid)
 	if result.Error != nil {
 		respond.Respond(c, 403, "未找到隧道", 0)
 		return
 	}
 	// 读取代理的node值 然后根据node值去查询node表 获取node的ip和port和name然后返回
-	var node Node
+	var node define.Node
 	nodeResult := db.First(&node, proxy.Node)
 	if nodeResult.Error != nil {
 		respond.Respond(c, 403, "未找到该节点", 0)
