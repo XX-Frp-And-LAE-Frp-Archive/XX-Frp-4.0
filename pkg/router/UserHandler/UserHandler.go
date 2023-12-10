@@ -10,29 +10,22 @@ import (
 )
 
 func HandleUser(c *gin.Context, db *gorm.DB) {
-	// 获取中间件传递的用户名
-	username, _ := c.Get("username")
-
-	if username == "" {
-		return
-	}
-
-	var user define.User
-	result := db.Table("users").Where("username = ?", username).First(&user)
-	if result.Error != nil {
-		return
-	}
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(define.User)
 
 	groupName := user.Group
 
 	// 根据用户名查询 limit 表
+
+	var userRes define.UserRes
 	var limitUser define.Limit
 	limitResult := db.Table("limits").Where("username = ?", user.Username).First(&limitUser)
 	if limitResult.Error == nil {
 		// 如果存在对应记录，则返回对应的 outbound 和 inbound proxies 值
-		user.Proxies = limitUser.Proxies
-		user.Outbound = int64(limitUser.Outbound)
-		user.Inbound = limitUser.Inbound
+		userRes.Proxies = limitUser.Proxies
+		userRes.Outbound = int64(limitUser.Outbound)
+		userRes.Inbound = limitUser.Inbound
 	} else {
 		// 如果不存在对应记录，则根据用户组查询 groups 表，找到对应的 outbound 和 inbound proxies 值
 		var group define.Groups
@@ -41,14 +34,23 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 			respond.Respond(c, 500, "用户组不存在，请联系管理员", 0)
 			return
 		}
-		user.Proxies = group.Proxies
-		user.Outbound = int64(group.Outbound)
-		user.Inbound = group.Inbound
+		userRes.Proxies = group.Proxies
+		userRes.Outbound = int64(group.Outbound)
+		userRes.Inbound = group.Inbound
 	}
 
-	user.EmailMD5 = getMD5Hash(user.Email)
+	userRes.EmailMD5 = getMD5Hash(user.Email)
+	userRes.ID = user.ID
+	userRes.Username = user.Username
+	userRes.Password = user.Password
+	userRes.Email = user.Email
+	userRes.Traffic = user.Traffic
+	userRes.RegTime = user.Regtime
+	userRes.Token = user.Token
+	userRes.Group = user.Group
+	userRes.Status = user.Status
 
-	c.JSON(200, user)
+	respond.Respond(c, 200, "Success!", userRes)
 }
 
 // 获取字符串的 MD5 值
