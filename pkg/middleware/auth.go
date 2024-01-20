@@ -27,6 +27,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 			result := db.Where("token = ?", token).First(&userData)
 			if result.Error != nil || result.RowsAffected == 0 {
 				respond.Respond(c, 401, "Token 不存在!", 0)
+				c.Abort() // 停止执行后续处理
 				return
 			} else {
 				// 将用户信息传递给下级路由
