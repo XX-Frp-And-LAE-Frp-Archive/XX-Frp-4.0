@@ -16,6 +16,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 		// 检查 Authorization 头部是否为空或不包含前缀 "Bearer "
 		if token == "" || !strings.HasPrefix(token, "Bearer ") {
 			respond.Respond(c, 401, "错误的 Token 格式!", 0)
+			c.Abort() // 停止执行后续处理
 			return
 		} else {
 
@@ -29,11 +30,10 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 				respond.Respond(c, 401, "Token 不存在!", 0)
 				c.Abort() // 停止执行后续处理
 				return
-			} else {
-				// 将用户信息传递给下级路由
-				c.Set("user", userData)
-				c.Next()
 			}
+			// 将用户信息传递给下级路由
+			c.Set("user", userData)
+			c.Next()
 		}
 	}
 }
