@@ -85,6 +85,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiAuthRouter.GET("/node/list", func(c *gin.Context) {
 			TunnelHandler.HandleGetNodeList(c, db)
 		})
+		apiAuthRouter.GET("/node/list/all", func(c *gin.Context) {
+			TunnelHandler.HandleGetAllNode(c, db)
+		})
 		apiAuthRouter.POST("/user/reset_password", func(c *gin.Context) {
 			UserHandler.HandleResetPassword(c, db)
 		})

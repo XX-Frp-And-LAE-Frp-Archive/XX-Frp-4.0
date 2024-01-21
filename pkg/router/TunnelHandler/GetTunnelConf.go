@@ -36,7 +36,7 @@ func GetConfByNode(c *gin.Context, db *gorm.DB) {
 	conf += "token = " + nodeInfo.Token + "\n"
 	conf += "tcp_mux = true\n"
 	conf += "protocol = tcp\n"
-	conf += "token = " + user.Token + "\n"
+	conf += "user = " + user.Token + "\n"
 	conf += "dns_server = 114.114.114.114\n"
 	conf += "\n"
 
@@ -97,7 +97,7 @@ func GetConfByID(c *gin.Context, db *gorm.DB) {
 	conf += "token = " + nodeInfo.Token + "\n"
 	conf += "tcp_mux = true\n"
 	conf += "protocol = tcp\n"
-	conf += "token = " + user.Token + "\n"
+	conf += "user = " + user.Token + "\n"
 	conf += "dns_server = 114.114.114.114\n"
 	conf += "\n"
 

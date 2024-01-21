@@ -58,6 +58,8 @@ func main() {
 
 	go cron.UpdateSettingPeriodically(db)
 
+	go cron.UpdateNodeStatus(db)
+
 	// 加载所有路由
 	router.LoadRoutes(engine, db)
 

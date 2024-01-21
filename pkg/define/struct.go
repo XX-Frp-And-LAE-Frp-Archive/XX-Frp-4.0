@@ -122,6 +122,16 @@ type Node struct {
 	AllowPort string `json:"allow_port"`
 	AllowType string `json:"allow_type"`
 	Status    int
+	KumaId    int
+	Health24  float64
+}
+
+type KumaData struct {
+	HeartbeatList map[string][]struct {
+		Status int
+		Time   string
+	}
+	UptimeList map[string]float64 `json:"uptimeList"`
 }
 
 type Code struct {
