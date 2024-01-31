@@ -92,6 +92,10 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 			UserHandler.HandleResetPassword(c, db)
 		})
 	}
+	//apiV4managerRouter := r.Group("/api/v4/manage")
+	//{
+	//	apiV4managerRouter.POST
+	//}
 	// 保留 v3 版本的 Frps 鉴权
 	apiV3Router := r.Group("/api/v3")
 	{
