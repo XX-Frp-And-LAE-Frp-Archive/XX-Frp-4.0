@@ -91,6 +91,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiAuthRouter.POST("/user/reset_password", func(c *gin.Context) {
 			UserHandler.HandleResetPassword(c, db)
 		})
+		apiAuthRouter.GET("/tunnel/get_free_port", func(c *gin.Context) {
+			TunnelHandler.HandleGetFreePort(c)
+		})
 	}
 	//apiV4managerRouter := r.Group("/api/v4/manage")
 	//{

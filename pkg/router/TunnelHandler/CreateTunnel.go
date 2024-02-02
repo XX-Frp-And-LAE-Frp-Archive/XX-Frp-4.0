@@ -1,10 +1,12 @@
 package TunnelHandler
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg/cron"
 	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"log"
 	"net"
 	"regexp"
 	"strconv"
@@ -122,12 +124,12 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 		// 将 proxy.RemotePort 转换成 int 类型
 		remotePort, _ := strconv.Atoi(proxy.RemotePort)
 		if !CheckAllowPort(node.AllowPort, remotePort) {
-			respond.Respond(c, 403, "您提交的远程端口在该节点已被使用", 0)
+			respond.Respond(c, 403, "您提交的远程端口在该节点不被允许", 0)
 			return
 		}
 		// 检查 proxies 表中 用户选择的 node 的对应端口是否已经被占用
 		var proxyCount2 int64
-		db.Model(&define.Proxies{}).Where("node = ? AND remote_port = ? proxy_type = ?", proxy.Node, proxy.RemotePort, proxy.ProxyType).Count(&proxyCount2)
+		db.Model(&define.Proxies{}).Where("node = ? AND remote_port = ? AND proxy_type = ?", proxy.Node, proxy.RemotePort, proxy.ProxyType).Count(&proxyCount2)
 		if proxyCount2 > 0 {
 			respond.Respond(c, 403, "该远程端口已经被占用了哦", 0)
 			return
@@ -149,6 +151,13 @@ func HandleCreateTunnel(c *gin.Context, db *gorm.DB) {
 	if result.Error != nil {
 		respond.Respond(c, 500, "写入失败", 0)
 		return
+	}
+	// port 不可能是str，忽略错误
+	port, _ := strconv.Atoi(proxy.RemotePort) // 将字符串类型的端口号转换为整数
+	err := cron.RemovePortFromCache(node.ID, proxy.ProxyType, port)
+	if err != nil {
+		log.Print(err)
+		// 这块很严谨，校验都做完了能有什么错误呢（）
 	}
 	respond.Respond(c, 200, "创建成功", 0)
 }

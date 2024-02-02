@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/gin-gonic/gin v1.9.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	golang.org/x/crypto v0.9.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gorm.io/driver/mysql v1.5.1

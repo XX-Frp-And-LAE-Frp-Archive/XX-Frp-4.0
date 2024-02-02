@@ -13,7 +13,6 @@ type User struct {
 }
 
 // 定义用户返回结构体
-
 type UserRes struct {
 	ID       int64  `json:"id" db:"id"`
 	Username string `json:"username" db:"username"`

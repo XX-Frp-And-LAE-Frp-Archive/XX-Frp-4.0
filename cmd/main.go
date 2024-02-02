@@ -29,6 +29,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	// 设置gin模式
+	pkg.SetMode()
 }
 
 func main() {
@@ -38,27 +40,13 @@ func main() {
 	// 连接MySQL数据库
 	db = mysql.ConnectMySQL()
 
-	// 设置gin模式
-	pkg.SetMode()
-
 	// 创建 Gin 引擎
 	engine := gin.Default()
 
 	// 加载中间件
 	engine.Use(middleware.CORSMiddleware())
 
-	// 加载统计数据
-	go cron.UpdateStatisticsPeriodically(db)
-
-	// 加载赞助者
-	go cron.UpdateDataPeriodically(db)
-
-	// 每天更新 traffic 数据库为 0
-	go cron.UpdateTrafficPeriodically(db)
-
-	go cron.UpdateSettingPeriodically(db)
-
-	go cron.UpdateNodeStatus(db)
+	cron.StartCronJobs(db)
 
 	// 加载所有路由
 	router.LoadRoutes(engine, db)

@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"github.com/ahmr-bot/ME-Frp/pkg"
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -13,7 +14,7 @@ func ConnectMySQL() *gorm.DB {
 
 	dsn := conf.Mysql.User + ":" + conf.Mysql.Password + "@tcp(" + conf.Mysql.Host + ":" + conf.Mysql.Port + ")/" + conf.Mysql.Database + "?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger: logger.Default.LogMode(pkg.LogMode),
 	})
 	if err != nil {
 		panic(err)
