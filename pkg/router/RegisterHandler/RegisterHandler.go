@@ -1,7 +1,6 @@
 package register
 
 import (
-	"crypto/md5"
 	"encoding/hex"
 	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
@@ -10,27 +9,17 @@ import (
 	"gorm.io/gorm"
 	"math/rand"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 )
 
-// GenerateToken 生成随机token
+// 使用crypto/rand生成随机token
 func GenerateToken() string {
-	// 生成当前时间戳
-	timestamp := time.Now().Unix()
-	// 生成随机数
-	rand.Seed(time.Now().UnixNano())
-	random := rand.Intn(1000000) // 随机范围可根据需要更改
-
-	// 将时间戳和随机数拼接成字符串
-	tokenString := strconv.FormatInt(timestamp, 10) + strconv.Itoa(random)
-
-	// 计算 MD5 值
-	hash := md5.Sum([]byte(tokenString))
-	md5Str := hex.EncodeToString(hash[:])
-
-	return md5Str
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b)
 }
 
 func IsValidEmail(email string) bool {
@@ -59,29 +48,19 @@ func IsValidUsername(username string) bool {
 	return match
 }
 
-// 检查邮箱是否已经存在,不使用where查询，因为where查询会返回一个数组
+func checkUsername(username string, db *gorm.DB) bool {
+	var count int64
+	db.Model(&define.User{}).Where("LOWER(username) = LOWER(?)", username).Count(&count)
+	// 如果count大于0，说明至少用户名已存在
+	return count > 0
+}
 func checkEmail(email string, db *gorm.DB) bool {
-	var user define.User
-	db.First(&user, "email = ?", email)
-	lower := strings.ToLower(user.Email)
-	if lower == strings.ToLower(email) {
-		return true
-	}
-	return false
+	var count int64
+	db.Model(&define.User{}).Where("LOWER(email) = LOWER(?)", email).Count(&count)
+	// 如果count大于0，说明至少用户名已存在
+	return count > 0
 }
 
-// 检查用户名是否已经注册
-func checkUsername(username string, db *gorm.DB) bool {
-	var user define.User
-	// 查找是否存在该用户
-	db.First(&user, "username = ?", username)
-	// fmt.Printf(user.Username)
-	lower := strings.ToLower(user.Username)
-	if lower == strings.ToLower(username) {
-		return true
-	}
-	return false
-}
 func HandleRegister(c *gin.Context, db *gorm.DB) {
 	username := c.PostForm("username")
 	email := c.PostForm("email")
@@ -108,14 +87,9 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 		respond.Respond(c, 400, "验证码格式错误！", 0)
 		return
 	}
-	// 查询username是否被注册
-	if checkUsername(username, db) {
+	usernameExists := checkUsername(username, db)
+	if usernameExists {
 		respond.Respond(c, 400, "注册失败，用户名已存在！", 0)
-		return
-	}
-	// 查询邮箱是否被注册
-	if checkEmail(email, db) {
-		respond.Respond(c, 400, "注册失败，邮箱已存在！", 0)
 		return
 	}
 	// 使用email作为key，从数据库codes表中获取验证码 并与用户输入的验证码进行比对
@@ -133,7 +107,10 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 			return
 		}
 		// 验证码正确，且未过期，删除数据库中对应的验证码
-		db.Table("codes").Where("email = ?", email).Delete(&codes)
+		// 异步删除验证码
+		go func() {
+			db.Table("codes").Where("email = ?", email).Delete(&define.Code{})
+		}()
 	}
 
 	// 加密密码
@@ -159,7 +136,7 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 		Username: username,
 		Email:    email,
 		Password: string(hashedPassword),
-		Status:   false,
+		Status:   0,
 		Group:    "default",
 		Traffic:  traffic,
 		Token:    token,

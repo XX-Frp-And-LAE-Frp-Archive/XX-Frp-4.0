@@ -1,0 +1,152 @@
+package RealnameHandler
+
+import (
+	"encoding/base64"
+	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	_struct "github.com/ahmr-bot/ME-Frp/pkg/define"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
+	"github.com/gin-gonic/gin"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	ivs "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ivs/v2"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ivs/v2/model"
+	region "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ivs/v2/region"
+	"gorm.io/gorm"
+	"regexp"
+	"time"
+)
+
+type VerifyResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		Result int `json:"result"`
+	} `json:"data"`
+}
+
+type Realname struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+	IDCard   string `json:"idcard"`
+	Time     int64  `json:"time"`
+}
+type Failrealname struct {
+	Username string `json:"username"`
+	Time     int64  `json:"time"`
+}
+
+func IsValidName(name string) bool {
+	//通过正则表达式判断是否为中文
+	if m, _ := regexp.MatchString("^\\p{Han}+$", name); !m {
+		return false
+	}
+	return true
+}
+func IsValidIDCard(idcard string) bool {
+	//通过正则表达式判断是否为18位数字或包含X
+	if m, _ := regexp.MatchString("^[0-9]{17}[0-9X]$", idcard); !m {
+		return false
+	}
+	return true
+}
+func RealnameHandler(c *gin.Context, db *gorm.DB) {
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(_struct.User)
+	// 获取提交的表单中的名字和身份证号
+	name := c.PostForm("name")
+	idcard := c.PostForm("idcard")
+	// 检查提交的表单中的名字和身份证号格式
+	if !IsValidName(name) {
+		respond.Respond(c, 400, "姓名格式错误!", 0)
+		return
+	}
+	if !IsValidIDCard(idcard) {
+		respond.Respond(c, 400, "身份证格式错误!", 0)
+		return
+	}
+	// 检查是否已经实名认证
+	var realname Realname
+	exist := db.Where("username = ?", user.Username).First(&realname)
+	if exist.RowsAffected != 0 {
+		respond.Respond(c, 400, "已经实名认证!", 0)
+		return
+	}
+	// 检查24小时内是否有失败记录
+	var failrealname Failrealname
+	fails := db.Where("username = ?", user.Username).First(&failrealname)
+	if fails.RowsAffected != 0 {
+		if time.Now().Unix()-failrealname.Time < 86400 {
+			respond.Respond(c, 400, "24小时只能认证一次！", 0)
+			return
+		}
+		// 超过24小时删除对应用户的失败记录
+		db.Delete(&failrealname)
+	}
+	conf := config.GetConfig()
+
+	auth := basic.NewCredentialsBuilder().
+		WithAk(conf.Realname.SecretID).
+		WithSk(conf.Realname.SecretKey).
+		Build()
+
+	client := ivs.NewIvsClient(
+		ivs.IvsClientBuilder().
+			WithRegion(region.ValueOf("cn-north-1")).
+			WithCredential(auth).
+			Build())
+
+	request := &model.DetectExtentionByNameAndIdRequest{}
+	var listReqDataData = []model.ExtentionReqDataByNameAndId{
+		{
+			VerificationName: "陈薪宇",
+			VerificationId:   "620302200706010632",
+		},
+	}
+	databody := &model.IvsExtentionByNameAndIdRequestBodyData{
+		ReqData: &listReqDataData,
+	}
+	uuidMeta := "12121212"
+	metabody := &model.Meta{
+		Uuid: &uuidMeta,
+	}
+	request.Body = &model.IvsExtentionByNameAndIdRequestBody{
+		Data: databody,
+		Meta: metabody,
+	}
+	response, err := client.DetectExtentionByNameAndId(request) // 判断实名认证结果
+
+	if err != nil {
+		respond.Respond(c, 500, "接口异常，请联系管理员", 0)
+	}
+
+	switch response.HttpStatusCode {
+	case 200:
+		// 使用base64加密 name
+		encodeName := base64.StdEncoding.EncodeToString([]byte(name))
+		// 使用base64加密 idcard
+		encodeIdcard := base64.StdEncoding.EncodeToString([]byte(idcard))
+
+		// 在 realname 表的创建一行 写入 username name idcard time 信息
+		db.Create(&Realname{
+			Username: user.Username,
+			Name:     encodeName,
+			IDCard:   encodeIdcard,
+			Time:     time.Now().Unix(),
+		})
+		// 更新 users 表的 group 为 realname
+		db.Model(&User{}).Where("username = ?", user.Username).Update("group", "realname")
+
+		// 返回更新成功的消息
+		respond.Respond(c, 200, "认证成功", 0)
+	case 400:
+		// 将 username time 写入到 failrealname 表中
+		db.Create(&Failrealname{
+			Username: user.Username,
+			Time:     time.Now().Unix(),
+		})
+		// 返回实名认证失败的消息
+		respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
+	default:
+		respond.Respond(c, 500, "接口异常，请联系管理员", 0)
+	}
+}

@@ -1,9 +1,9 @@
 package cron
 
 import (
-	"fmt"
 	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -16,9 +16,9 @@ func UpdateTrafficPeriodically(db *gorm.DB) {
 			// 更新todaytraffic表中的所有行的traffic为0
 			result := db.Model(&define.TodayTraffic{}).Update("traffic", 0)
 			if result.Error != nil {
-				fmt.Printf("清空流量数据错误: %v\n", result.Error)
+				log.Printf("清空流量数据错误: %v\n", result.Error)
 			} else {
-				fmt.Println("流量数据清空成功")
+				log.Printf("流量数据清空成功")
 			}
 		}
 	}

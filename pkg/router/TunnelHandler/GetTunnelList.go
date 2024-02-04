@@ -37,6 +37,7 @@ func GetTunnelList(c *gin.Context, db *gorm.DB) {
 		proxies[i].NodeHostname = node.Hostname
 		proxies[i].NodePort = node.Port
 		proxies[i].NodeToken = node.Token
+		proxies[i].Status = proxy.Status
 	}
 	respond.Respond(c, 200, "Success!", proxies)
 }

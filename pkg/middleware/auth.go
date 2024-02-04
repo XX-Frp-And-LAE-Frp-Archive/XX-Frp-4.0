@@ -31,6 +31,12 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 				c.Abort() // 停止执行后续处理
 				return
 			}
+			// 判断 userdata 的 status 是否为 1 为 1 则封号 为 0 则正常 status 是 bool 值
+			if userData.Status == 1 {
+				respond.Respond(c, 406, "用户已被封号!", 0)
+				c.Abort() // 停止执行后续处理
+				return
+			}
 			// 将用户信息传递给下级路由
 			c.Set("user", userData)
 			c.Next()

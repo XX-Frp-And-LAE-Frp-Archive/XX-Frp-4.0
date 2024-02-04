@@ -136,6 +136,8 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		})
 		// 返回实名认证失败的消息
 		respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
+	default:
+		respond.Respond(c, 500, "接口异常，请联系管理员", 0)
 	}
 }
 

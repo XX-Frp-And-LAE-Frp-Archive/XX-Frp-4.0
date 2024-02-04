@@ -13,7 +13,7 @@ import (
 )
 
 // 初始化一个全局的缓存实例，设置默认的过期时间和清理间隔时间
-var c = cache.New(15*time.Minute, 20*time.Minute)
+var C = cache.New(15*time.Minute, 20*time.Minute)
 
 func UpdateFreePort(db *gorm.DB) {
 	for {
@@ -25,7 +25,7 @@ func UpdateFreePort(db *gorm.DB) {
 				updateNodePorts(db, node, protocol)
 			}
 		}
-		log.Print("Updated Free Port.")
+		log.Printf("Updated Free Port.")
 		time.Sleep(10 * time.Minute)
 	}
 }
@@ -43,7 +43,7 @@ func updateNodePorts(db *gorm.DB, node define.Node, protocol string) {
 	// 构造一个键名，格式为 "nodeID:protocol"，例如 "123:tcp"
 	cacheKey := fmt.Sprintf("%d:%s", node.ID, protocol)
 	// 将数据写入缓存
-	c.Set(cacheKey, availablePorts, cache.NoExpiration)
+	C.Set(cacheKey, availablePorts, cache.NoExpiration)
 }
 
 // 解析 allow_port 字符串，生成所有可用端口的列表
@@ -115,7 +115,7 @@ func filterUsedPorts(availablePorts []int, proxies []define.Proxies) ([]int, err
 // GetFreePort 从缓存中随机获取一个可用端口并返回
 func GetFreePort(nodeID int, protocol string) (int, error) {
 	cacheKey := fmt.Sprintf("%d:%s", nodeID, protocol)
-	value, found := c.Get(cacheKey)
+	value, found := C.Get(cacheKey)
 	if !found {
 		return 0, fmt.Errorf("没有找到与节点ID %d 和协议 %s 相关的可用端口", nodeID, protocol)
 	}
@@ -138,7 +138,7 @@ func GetFreePort(nodeID int, protocol string) (int, error) {
 // RemovePortFromCache 从缓存中删除指定节点和类型对应的特定端口
 func RemovePortFromCache(nodeID int, protocol string, port int) error {
 	cacheKey := fmt.Sprintf("%d:%s", nodeID, protocol)
-	value, found := c.Get(cacheKey)
+	value, found := C.Get(cacheKey)
 	if !found {
 		return fmt.Errorf("没有找到与节点ID %d 和协议 %s 相关的可用端口", nodeID, protocol)
 	}
@@ -152,7 +152,7 @@ func RemovePortFromCache(nodeID int, protocol string, port int) error {
 	if _, exists := availablePorts[port]; exists {
 		delete(availablePorts, port)
 		// 更新缓存中的可用端口列表
-		c.Set(cacheKey, availablePorts, cache.NoExpiration)
+		C.Set(cacheKey, availablePorts, cache.NoExpiration)
 	} else {
 		return fmt.Errorf("端口 %d 不在节点ID %d 和协议 %s 的可用端口列表中", port, nodeID, protocol)
 	}

@@ -35,12 +35,17 @@ func UpdateStatisticsPeriodically(db *gorm.DB) {
 			continue
 		}
 
-		// 查询 todaytraffic 表 traffic 列的和
-		var sum int64
-		if err := db.Table("todaytraffic").Model(&define.TodayTraffic{}).Select("SUM(traffic)").Scan(&sum).Error; err != nil {
-			// 处理错误
-			fmt.Println("Failed to query traffic sum:", err)
+		// 查询nodes表
+		var nodes []define.Node
+		if err := db.Find(&nodes).Error; err != nil {
+			fmt.Println("Failed to query nodes:", err)
 			continue
+		}
+		//对每一个节点的TotalTrafficIn TotalTrafficout进行求和
+		var sum int64
+		for _, node := range nodes {
+			sum += node.TotalTrafficIn
+			sum += node.TotalTrafficOut
 		}
 
 		// 将查询结果写入缓存
@@ -50,7 +55,7 @@ func UpdateStatisticsPeriodically(db *gorm.DB) {
 			"nodeCount":  nodeCount,
 			"trafficSum": sum,
 		}
-		log.Print("Updated Statistics data from database.")
+		log.Printf("Updated Statistics data from database.")
 		time.Sleep(5 * time.Minute)
 	}
 }

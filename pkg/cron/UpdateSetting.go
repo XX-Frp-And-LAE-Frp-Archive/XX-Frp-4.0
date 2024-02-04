@@ -23,7 +23,7 @@ func UpdateSettingPeriodically(db *gorm.DB) {
 		// 更新缓存
 		SettingCache = settings
 
-		log.Print("Updated Setting data from database.")
+		log.Printf("Updated Setting data from database.")
 		time.Sleep(5 * time.Minute)
 	}
 }

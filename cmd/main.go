@@ -51,7 +51,7 @@ func main() {
 	// 加载所有路由
 	router.LoadRoutes(engine, db)
 
-	// 启动服务器
+	// 启动服务器s
 	addr := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	log.Printf("服务器已启动，监听地址：" + conf.Server.Host + ":" + fmt.Sprint(conf.Server.Port))
 	if err := engine.Run(addr); err != nil {

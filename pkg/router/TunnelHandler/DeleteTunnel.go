@@ -16,6 +16,10 @@ func HandleDeleteTunnel(c *gin.Context, db *gorm.DB) {
 	tunnelid := c.Param("tunnelid")
 	var proxy define.Proxies
 	db.Where("username = ? AND id = ?", user.Username, tunnelid).First(&proxy)
+	if proxy.Status == 2 {
+		respond.Respond(c, 403, "隧道已被封禁", 0)
+		return
+	}
 	if proxy.ID == 0 {
 		respond.Respond(c, 403, "隧道未找到，可能已被删除，请刷新", 0)
 		return

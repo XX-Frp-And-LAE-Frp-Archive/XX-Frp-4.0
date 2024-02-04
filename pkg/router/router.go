@@ -41,7 +41,9 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		apiPublicRouter.GET("/info/setting", func(c *gin.Context) {
 			InfoHandler.HandleSetting(c)
 		})
-
+		apiPublicRouter.GET("/client/update", func(c *gin.Context) {
+			InfoHandler.HandleClient(c)
+		})
 	}
 	apiAuthRouter := r.Group("/api/v4/auth")
 	apiAuthRouter.Use(middleware.AuthMiddleware(db))
@@ -93,6 +95,12 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 		apiAuthRouter.GET("/tunnel/get_free_port", func(c *gin.Context) {
 			TunnelHandler.HandleGetFreePort(c)
+		})
+		apiAuthRouter.POST("/tunnel/close_tunnel/:tunnelid", func(c *gin.Context) {
+			TunnelHandler.CloseTunnel(c, db)
+		})
+		apiAuthRouter.POST("/tunnel/edit_tunnel", func(c *gin.Context) {
+			TunnelHandler.HandleEditTunnel(c, db)
 		})
 	}
 	//apiV4managerRouter := r.Group("/api/v4/manage")

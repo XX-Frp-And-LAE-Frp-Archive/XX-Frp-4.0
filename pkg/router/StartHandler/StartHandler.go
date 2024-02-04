@@ -46,8 +46,13 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			return
 		}
 		// 判断用户status是否为0
-		if User.Status == true {
+		if User.Status == 1 {
 			respond.Respond(c, 403, "已被封禁", 0)
+			return
+		}
+		// 判断 status 是否为2
+		if User.Status == 2 {
+			respond.Respond(c, 403, "流量已耗尽，隧道启动功能将在流量>0的5分钟内恢复", 0)
 			return
 		}
 		// 判断用户是否有权限使用该节点
@@ -84,7 +89,7 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			return
 		}
 		// 判断用户status是否为0
-		if User.Status == true {
+		if User.Status == 1 {
 			respond.Respond(c, 403, "已被封禁", 0)
 			return
 		}
@@ -104,8 +109,12 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 				return
 			}
 			// 判断用户是否有权限使用该隧道
-			if proxy.Status == true {
+			if proxy.Status == 1 {
 				respond.Respond(c, 403, "隧道被禁用", 0)
+				return
+			}
+			if proxy.Status == 2 {
+				respond.Respond(c, 403, "隧道被封禁", 0)
 				return
 			}
 		} else if ProxyType == "http" || ProxyType == "https" {
@@ -115,11 +124,6 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			proxyResult := db.First(&proxy, "username = ? AND proxy_type = ? AND proxy_name = ? AND domain = ?", User.Username, ProxyType, ProxyName, Domain)
 			if proxyResult.Error != nil {
 				respond.Respond(c, 403, "隧道不存在 ", 0)
-				return
-			}
-			// 判断用户是否有权限使用该隧道
-			if proxy.Status == true {
-				respond.Respond(c, 403, "隧道被禁用", 0)
 				return
 			}
 		} else {
@@ -154,7 +158,7 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			return
 		}
 		// 判断用户status是否为0
-		if User.Status == true {
+		if User.Status == 1 {
 			respond.Respond(c, 403, "已被封禁", 0)
 			return
 		}

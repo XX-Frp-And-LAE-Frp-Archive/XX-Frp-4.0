@@ -8,22 +8,22 @@ import (
 	"time"
 )
 
-var Cache []define.Sponsor
+var ClientCache []define.Client
 
-// 从数据库中更新数据到缓存
-func UpdateDataPeriodically(db *gorm.DB) {
+// UpdateClientPeriodically 从数据库中更新数据到缓存
+func UpdateClientPeriodically(db *gorm.DB) {
 	for {
-		var sponsors []define.Sponsor
-		result := db.Find(&sponsors)
+		var Client []define.Client
+		result := db.Find(&Client)
 		if result.Error != nil {
 			fmt.Println("Failed to retrieve data from database:", result.Error)
 			return
 		}
 
 		// 更新缓存
-		Cache = sponsors
+		ClientCache = Client
 
-		log.Printf("Updated sponsors data from database.")
+		log.Printf("Updated Client data from database.")
 		time.Sleep(5 * time.Minute)
 	}
 }
