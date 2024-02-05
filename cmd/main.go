@@ -46,7 +46,7 @@ func main() {
 	// 加载中间件
 	engine.Use(middleware.CORSMiddleware())
 
-	cron.StartCronJobs(db)
+	go cron.StartCronJobs(db)
 
 	// 加载所有路由
 	router.LoadRoutes(engine, db)

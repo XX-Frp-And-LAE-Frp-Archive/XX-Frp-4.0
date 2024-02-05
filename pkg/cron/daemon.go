@@ -49,8 +49,8 @@ func FetchData(node define.Node, path string) (*http.Response, error) {
 	return resp, err
 }
 
-// FetchServerInfo FetchData 发送HTTP GET请求到所有节点的server_info
-func FetchServerInfo(db *gorm.DB) {
+// FetchTraffic  发送HTTP GET请求到所有节点的server_info
+func FetchTraffic(db *gorm.DB) {
 	for {
 		// nodes 表获取所有节点信息
 		var nodes []define.Node
@@ -109,6 +109,38 @@ func FetchServerInfo(db *gorm.DB) {
 				log.Println("解析"+node.Name+"节点信息失败:", err)
 				continue
 			}
+			// 判断 node.TotalTrafficIn 和 node.TotalTrafficOut 是否分别大于 frpsData.TotalTrafficIn 和 frpsData.TotalTrafficOut
+			if node.TotalTrafficIn > frpsData.TotalTrafficIn || node.TotalTrafficOut > frpsData.TotalTrafficOut {
+				// 如果大于 则代表 frps 重启过 需要给用户结算流量
+				// 获取该节点的所有隧道信息
+				var proxies []define.Proxies
+				result := db.Find(&proxies, "node = ?", node.ID)
+				if result.Error != nil {
+					log.Println("查询数据库出错:", result.Error)
+					continue
+				}
+				// 遍历所有隧道
+				for _, proxy := range proxies {
+					// 如果该隧道的 in out 流量为0 则跳过
+					if proxy.TodayTrafficIn == 0 && proxy.TodayTrafficOut == 0 {
+						continue
+					}
+					// 读取该隧道的用户名 和 in out 流量
+					username := proxy.Username
+					todayTrafficIn := proxy.TodayTrafficIn
+					todayTrafficOut := proxy.TodayTrafficOut
+					totalTraffic := todayTrafficIn + todayTrafficOut
+					// 扣除用户流量
+					var user define.User
+					result := db.First(&user, "username = ?", username)
+					if result.Error != nil {
+						log.Println("查询数据库出错:", result.Error)
+						continue
+					}
+					user.Traffic -= totalTraffic
+					result = db.Save(&user)
+				}
+			}
 			// 将 ProxyTypeCount 中tcp udp http https的数量相加
 			node.OnlineCount = int64(frpsData.ProxyTypeCount.Tcp + frpsData.ProxyTypeCount.Udp + frpsData.ProxyTypeCount.Http + frpsData.ProxyTypeCount.Https)
 			node.Version = frpsData.Version
@@ -120,12 +152,10 @@ func FetchServerInfo(db *gorm.DB) {
 				log.Println("更新"+node.Name+"节点信息失败", result.Error)
 			}
 		}
-		time.Sleep(5 * time.Minute)
 		log.Printf("Updated Node data from database.")
-	}
-}
-func FetchTraffic(db *gorm.DB) {
-	for {
+		// 等待 1 分钟
+		time.Sleep(1 * time.Minute)
+
 		// 预加载所有用户信息到map中
 		userMap := make(map[string]define.User)
 		var users []define.User
@@ -147,13 +177,6 @@ func FetchTraffic(db *gorm.DB) {
 		for _, proxy := range proxiesList {
 			key := proxy.Username + "." + proxy.ProxyName
 			proxiesMap[key] = proxy
-		}
-
-		// 获取所有节点信息
-		var nodes []define.Node
-		if err := db.Find(&nodes).Error; err != nil {
-			log.Println("获取节点信息失败:", err)
-			return
 		}
 
 		// 遍历所有节点
@@ -209,14 +232,8 @@ func FetchTraffic(db *gorm.DB) {
 					}
 
 					// 更新流量数据
-					// 判断 traffic.CurConns 是否大于 proxy.CurConns 如果大于则更新 小于则相加再更新
-					if traffic.CurConns > proxy.CurConns {
-						proxy.TodayTrafficIn = traffic.TodayTrafficIn
-						proxy.TodayTrafficOut = traffic.TodayTrafficOut
-					} else {
-						proxy.TodayTrafficIn += traffic.TodayTrafficIn
-						proxy.TodayTrafficOut += traffic.TodayTrafficOut
-					}
+					proxy.TodayTrafficIn = traffic.TodayTrafficIn
+					proxy.TodayTrafficOut = traffic.TodayTrafficOut
 					proxy.CurConns = traffic.CurConns
 					proxy.ClientVersion = traffic.ClientVersion
 					proxy.Online = traffic.Status
@@ -278,13 +295,6 @@ func CalculateUserTraffic(db *gorm.DB) {
 		if err := db.Model(&define.User{}).Find(&users).Error; err != nil {
 			log.Println("获取用户信息失败:", err)
 			return
-		}
-		// 判断时间 如果是在 0点00 到 0点10之间则清空全表
-		now := time.Now()
-		if now.Hour() == 0 && now.Minute() < 9 {
-			if err := db.Exec("TRUNCATE TABLE today_traffic").Error; err != nil {
-				log.Println("清空流量表失败:", err)
-			}
 		}
 
 		// 获取所有隧道信息，并按照用户名分组累计流量
@@ -372,6 +382,13 @@ func UpdateUserTraffic(db *gorm.DB) {
 			totalTrafficMB := float64(userTraffic[todayTraffic.User])
 			usedTrafficMB := float64(todayTraffic.Traffic) / 1024.0 / 1024.0
 			remainTraffic := int64(totalTrafficMB - usedTrafficMB)
+			// 如果用户号被封 则跳过
+			if userStatus[todayTraffic.User] == 1 {
+				continue
+			}
+			if userStatus[todayTraffic.User] == 2 {
+				continue
+			}
 			// 如果剩余流量小于=0 则下线该用户的所有隧道
 			if remainTraffic <= 0 {
 				// 下线该用户的所有隧道
@@ -391,18 +408,67 @@ func UpdateUserTraffic(db *gorm.DB) {
 				}
 				continue
 			}
-			if userStatus[todayTraffic.User] == 2 {
-				continue
-			}
-			// 如果时间是23:50-23:59 更新用户流量 为 remainTraffic
-			now := time.Now()
-			if now.Hour() == 23 && now.Minute() == 50 {
-				if err := db.Model(&define.User{}).Where("username = ?", todayTraffic.User).Update("traffic", remainTraffic).Error; err != nil {
-					log.Println("更新用户流量失败:", err)
-				}
-			}
 		}
 		time.Sleep(5 * time.Minute)
 		log.Printf("Updated User Traffic.")
+	}
+}
+
+// ClearUserTraffic 清空用户流量
+func ClearUserTraffic(db *gorm.DB) {
+	// 清空 today_traffic 表
+	if err := db.Exec("TRUNCATE TABLE today_traffic").Error; err != nil {
+		log.Println("清空流量表失败:", err)
+	}
+	// 清空 proxies 表 today_traffic_in today_traffic_out
+	if err := db.Model(&define.Proxies{}).Update("today_traffic_in", 0).Error; err != nil {
+		log.Println("清空隧道流量失败:", err)
+	}
+}
+
+// SettleUserTraffic 结算用户流量
+func SettleUserTraffic(db *gorm.DB) {
+	// 读取users表中的所有数据 并构建一个能用username作为键的map traffic status为值
+	var userTraffic = make(map[string]int64)
+	var users []define.User
+	if err := db.Find(&users).Error; err != nil {
+		log.Println("获取用户信息失败:", err)
+		return
+	}
+
+	var userStatus = make(map[string]int)
+	for _, user := range users {
+		userTraffic[user.Username] = user.Traffic
+		userStatus[user.Username] = user.Status
+	}
+
+	// 读取todaytraffic表中的所有数据 并遍历
+	var todayTraffics []define.TodayTraffic
+	if err := db.Find(&todayTraffics).Error; err != nil {
+		log.Println("获取todaytraffic信息失败:", err)
+		return
+	}
+	for _, todayTraffic := range todayTraffics {
+		// 计算剩余流量
+		totalTrafficMB := float64(userTraffic[todayTraffic.User])
+		usedTrafficMB := float64(todayTraffic.Traffic) / 1024.0 / 1024.0
+		remainTraffic := int64(totalTrafficMB - usedTrafficMB)
+
+		// 如果用户号被封 则跳过
+		if userStatus[todayTraffic.User] == 1 {
+			continue
+		}
+
+		if remainTraffic <= 0 {
+			if err := db.Model(&define.User{}).Where("username = ?", todayTraffic.User).Update("traffic", 0).Error; err != nil {
+				log.Println("更新用户流量失败:", err)
+			}
+		}
+		if userStatus[todayTraffic.User] == 2 {
+			continue
+		}
+		if err := db.Model(&define.User{}).Where("username = ?", todayTraffic.User).Update("traffic", remainTraffic).Error; err != nil {
+			log.Println("更新用户流量失败:", err)
+		}
 	}
 }
