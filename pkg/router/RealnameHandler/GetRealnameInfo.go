@@ -17,15 +17,15 @@ func GetRealnameInfo(c *gin.Context, db *gorm.DB) {
 	userInterface, _ := c.Get("user")
 	user, _ := userInterface.(_struct.User)
 	group := user.Group
-	if group == "admin" {
+	switch group {
+	case "admin":
 		respond.Respond(c, 200, "Success!", gin.H{
 			"code":     200,
 			"realname": "管理员",
 			"view":     "realname",
 			"time":     0,
 		})
-	} else if group == "realname" {
-		// 获取数据库 realname 表中的 time 字段 并将时间戳转换为时间
+	case "realname":
 		var realname Realname
 		db.Model(&Realname{}).Where("username = ?", user.Username).Select("time").Find(&realname)
 		respond.Respond(c, 200, "Success!", gin.H{
@@ -34,13 +34,13 @@ func GetRealnameInfo(c *gin.Context, db *gorm.DB) {
 			"view":     "realname",
 			"time":     realname.Time,
 		})
-	} else if group == "default" {
+	case "default":
 		respond.Respond(c, 200, "Success!", gin.H{
 			"code":     200,
 			"realname": "未实名认证",
 			"view":     "default",
 		})
-	} else {
+	default:
 		respond.Respond(c, 500, "未知错误!", gin.H{
 			"code":     500,
 			"realname": "未知错误",
