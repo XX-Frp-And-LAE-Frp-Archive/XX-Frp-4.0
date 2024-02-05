@@ -121,16 +121,27 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 	switch response.HttpStatusCode {
 	case 200:
-		// 使用base64加密 name
-		encodeName := base64.StdEncoding.EncodeToString([]byte(name))
-		// 使用base64加密 idcard
-		encodeIdcard := base64.StdEncoding.EncodeToString([]byte(idcard))
+		// 加密 name
+		encodeName, err := RsaEncrypt([]byte(name))
+		if err != nil {
+			respond.Respond(c, 500, "加密失败，请联系管理员", 0)
+			return
+		}
+		// 加密 idcard
+		encodeIdcard, err := RsaEncrypt([]byte(idcard))
+		if err != nil {
+			respond.Respond(c, 500, "加密失败，请联系管理员", 0)
+			return
+		}
+		// base64 编码
+		encodeNameStr := base64.StdEncoding.EncodeToString(encodeName)
+		encodeIdcardStr := base64.StdEncoding.EncodeToString(encodeIdcard)
 
 		// 在 realname 表的创建一行 写入 username name idcard time 信息
 		db.Create(&Realname{
 			Username: user.Username,
-			Name:     encodeName,
-			IDCard:   encodeIdcard,
+			Name:     encodeNameStr,
+			IDCard:   encodeIdcardStr,
 			Time:     time.Now().Unix(),
 		})
 		// 更新 users 表的 group 为 realname
@@ -149,4 +160,30 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 	default:
 		respond.Respond(c, 500, "接口异常，请联系管理员", 0)
 	}
+}
+// RsaEncrypt rsa加密
+func RsaEncrypt(origData []byte) ([]byte, error) {
+	// 定义 pkcs1 的公钥
+	public := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
+swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
+tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
+LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
+UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
+VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
+OwIDAQAB
+-----END PUBLIC KEY-----`
+	block, _ := pem.Decode([]byte(public))
+	if block == nil {
+		panic("public key error")
+	}
+	// 解析公钥
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	// 类型断言
+	pub := pubInterface.(*rsa.PublicKey)
+	// 加密
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }

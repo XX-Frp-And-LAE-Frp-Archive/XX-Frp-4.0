@@ -38,13 +38,6 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 		userRes.Outbound = int64(group.Outbound)
 		userRes.Inbound = group.Inbound
 	}
-	// 读取 todaytraffic 表中的记录
-	var todayTraffic define.TodayTraffic
-	todayTrafficResult := db.Table("todaytraffics").Where("username = ?", user.Username).First(&todayTraffic)
-	if todayTrafficResult.Error != nil {
-		respond.Respond(c, 500, "读取 todaytraffic 表失败", 0)
-		return
-	}
 
 	userRes.EmailMD5 = getMD5Hash(user.Email)
 	userRes.ID = user.ID
@@ -56,7 +49,6 @@ func HandleUser(c *gin.Context, db *gorm.DB) {
 	userRes.Token = user.Token
 	userRes.Group = user.Group
 	userRes.Status = user.Status
-	userRes.TodayTraffic = todayTraffic.Traffic
 
 	respond.Respond(c, 200, "Success!", userRes)
 }

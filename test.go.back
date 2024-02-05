@@ -1,0 +1,80 @@
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
+	"fmt"
+	"log"
+)
+
+// rsa加密
+func RsaEncrypt(origData []byte) ([]byte, error) {
+	// 定义 pkcs1 的公钥
+	public := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
+swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
+tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
+LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
+UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
+VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
+OwIDAQAB
+-----END PUBLIC KEY-----`
+	block, _ := pem.Decode([]byte(public))
+	if block == nil {
+		panic("public key error")
+	}
+	// 解析公钥
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	// 类型断言
+	pub := pubInterface.(*rsa.PublicKey)
+	// 加密
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
+}
+
+// rsa解密
+func RsaDecrypt(ciphertext []byte) ([]byte, error) {
+	// 定义 pkcs1 的私钥
+	private := ``
+	block, _ := pem.Decode([]byte(private))
+	if block == nil {
+		panic("private key error")
+	}
+	// 解析私钥
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	// 解密
+	return rsa.DecryptPKCS1v15(rand.Reader, privateKey, ciphertext)
+}
+
+// 测试·
+func main() {
+	// 测试
+	// 加密
+	origData := []byte("hello world")
+	ciphertext, err := RsaEncrypt(origData)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf(base64.StdEncoding.EncodeToString(ciphertext))
+	// 解密
+	// 定义密文
+	encryptedData := "Omn10P9k3iwCsqdKL6s+RSNPUheRpGXOFqPKKGNiemFGJS/0wLsYP6+Thayb+2Zi0wTI5MT0OEbO1/+doBDSMF92ZT8zQIUUxfRMABZT6H6g3b9KT\nsONzqr2DlQOBmbAEBg0OG7737j1Oq0fPvwHPVe3ZDp3IRLAbeQJs0vXJEU1EF3lmTlpstilmjXs9La3bSmLy468GZQfesKCbi9bHtCho7+/pxeONMCcmt+q1mbYzeyEBiRYSVgUT3rlmvJU5n+ygSaLoRCRvLjQ9ZmjtUsYRR9Z2yk1Rj/yy5AN8MKXzD5nAH0/4HmmqxfhHgTg+prQo18f80hZub+AhiUGRw=="
+	// 先 base64 解码
+	encryptedDataByte, err := base64.StdEncoding.DecodeString(encryptedData)
+	if err != nil {
+		log.Fatal(err)
+	}
+	decryptedData, err := RsaDecrypt(encryptedDataByte)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("解密后: %s\n", decryptedData)
+}

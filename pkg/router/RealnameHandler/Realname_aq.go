@@ -111,16 +111,27 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 	switch responseText {
 	case "0":
-		// 使用base64加密 name
-		encodeName := base64.StdEncoding.EncodeToString([]byte(name))
-		// 使用base64加密 idcard
-		encodeIdcard := base64.StdEncoding.EncodeToString([]byte(idcard))
+		// 加密 name
+		encodeName, err := RsaEncrypt([]byte(name))
+		if err != nil {
+			respond.Respond(c, 500, "加密失败，请联系管理员", 0)
+			return
+		}
+		// 加密 idcard
+		encodeIdcard, err := RsaEncrypt([]byte(idcard))
+		if err != nil {
+			respond.Respond(c, 500, "加密失败，请联系管理员", 0)
+			return
+		}
+		// base64 编码
+		encodeNameStr := base64.StdEncoding.EncodeToString(encodeName)
+		encodeIdcardStr := base64.StdEncoding.EncodeToString(encodeIdcard)
 
 		// 在 realname 表的创建一行 写入 username name idcard time 信息
 		db.Create(&Realname{
 			Username: user.Username,
-			Name:     encodeName,
-			IDCard:   encodeIdcard,
+			Name:     encodeNameStr,
+			IDCard:   encodeIdcardStr,
 			Time:     time.Now().Unix(),
 		})
 		// 更新 users 表的 group 为 realname
@@ -143,12 +154,17 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 // RsaEncrypt rsa加密
 func RsaEncrypt(origData []byte) ([]byte, error) {
-	publicKey := `-----BEGIN RSA PUBLIC KEY-----
-	MEgCQQD3reUyiTiGapGOUcuSc66AtSHQRlDkMeYRDxX+FlbfUsZUrqf0tuVdrSaV
-	hhL3RIxsB4Jc39slV9/xZC7ZgpStAgMBAAE=
-	-----END RSA PUBLIC KEY-----`
 	// 定义 pkcs1 的公钥
-	block, _ := pem.Decode([]byte(publicKey))
+	public := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
+swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
+tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
+LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
+UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
+VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
+OwIDAQAB
+-----END PUBLIC KEY-----`
+	block, _ := pem.Decode([]byte(public))
 	if block == nil {
 		panic("public key error")
 	}
@@ -159,6 +175,6 @@ func RsaEncrypt(origData []byte) ([]byte, error) {
 	}
 	// 类型断言
 	pub := pubInterface.(*rsa.PublicKey)
-	// 使用公钥加密
+	// 加密
 	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }

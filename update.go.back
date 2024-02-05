@@ -1,0 +1,96 @@
+package main
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
+	"flag"
+	"fmt"
+	"github.com/ahmr-bot/ME-Frp/pkg"
+	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	"github.com/ahmr-bot/ME-Frp/pkg/mysql"
+	"gorm.io/gorm"
+	"os"
+)
+
+var (
+	ConfigPath string
+)
+
+var (
+	db *gorm.DB
+)
+
+type Realname struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+	IDCard   string `json:"idcard"`
+	Time     int64  `json:"time"`
+}
+
+func init() {
+	flag.StringVar(&ConfigPath, "c", "config.toml", "配置文件路径")
+	flag.Parse()
+	err := config.LoadConfig(ConfigPath)
+	if err != nil {
+		panic(err)
+	}
+	// 设置gin模式
+	pkg.SetMode()
+}
+
+// RsaEncrypt rsa加密
+func RsaEncrypt(origData []byte) ([]byte, error) {
+	// 定义 pkcs1 的公钥
+	public := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
+swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
+tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
+LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
+UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
+VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
+OwIDAQAB
+-----END PUBLIC KEY-----`
+	block, _ := pem.Decode([]byte(public))
+	if block == nil {
+		panic("public key error")
+	}
+	// 解析公钥
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	// 类型断言
+	pub := pubInterface.(*rsa.PublicKey)
+	// 加密
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
+}
+
+func main() {
+	// 连接MySQL数据库
+	db = mysql.ConnectMySQL()
+
+	// 读取 realnames 表中的数据
+	var realnames []Realname
+	db.Find(&realnames)
+	for _, realname := range realnames {
+		// 先base64分别解码 name 和 idcard
+		name, _ := base64.StdEncoding.DecodeString(realname.Name)
+		idcard, _ := base64.StdEncoding.DecodeString(realname.IDCard)
+		// 将 name-idcard 保存到本地文件
+		file, _ := os.OpenFile("realname.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		file.WriteString(fmt.Sprintf("name: %s, idcard: %s\n", name, idcard))
+		file.Close()
+		// 使用 rsa 解密
+		decodeName, _ := RsaEncrypt(name)
+		decodeIdcard, _ := RsaEncrypt(idcard)
+		// 使用base64编码
+		encodeNameStr := base64.StdEncoding.EncodeToString(decodeName)
+		encodeIdcardStr := base64.StdEncoding.EncodeToString(decodeIdcard)
+		// 更新 realnames 表
+		db.Model(&Realname{}).Where("username = ?", realname.Username).Update("name", encodeNameStr)
+		db.Model(&Realname{}).Where("username = ?", realname.Username).Update("id_card", encodeIdcardStr)
+	}
+}

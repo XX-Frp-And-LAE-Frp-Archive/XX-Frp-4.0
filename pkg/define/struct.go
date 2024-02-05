@@ -14,20 +14,19 @@ type User struct {
 
 // 定义用户返回结构体
 type UserRes struct {
-	ID           int64  `json:"id" db:"id"`
-	Username     string `json:"username" db:"username"`
-	Password     string `json:"password" db:"password"`
-	Email        string `json:"email" db:"email"`
-	Traffic      int64  `json:"traffic" db:"traffic"`
-	Group        string `json:"group" db:"group"`
-	RegTime      int64  `json:"reg_time" db:"regtime"` // 假设注册时间应该是日期格式
-	Status       int    `json:"status" db:"status"`
-	Token        string `json:"token" db:"token"`
-	EmailMD5     string `gorm:"-" json:"email_md5"`
-	Outbound     int64  `json:"outbound"`
-	Inbound      int    `json:"inbound"`
-	Proxies      int    `json:"proxies"`
-	TodayTraffic int64  `json:"today_traffic"`
+	ID       int64  `json:"id" db:"id"`
+	Username string `json:"username" db:"username"`
+	Password string `json:"password" db:"password"`
+	Email    string `json:"email" db:"email"`
+	Traffic  int64  `json:"traffic" db:"traffic"`
+	Group    string `json:"group" db:"group"`
+	RegTime  int64  `json:"reg_time" db:"regtime"` // 假设注册时间应该是日期格式
+	Status   int    `json:"status" db:"status"`
+	Token    string `json:"token" db:"token"`
+	EmailMD5 string `gorm:"-" json:"email_md5"`
+	Outbound int64  `json:"outbound"`
+	Inbound  int    `json:"inbound"`
+	Proxies  int    `json:"proxies"`
 }
 
 type Client struct {

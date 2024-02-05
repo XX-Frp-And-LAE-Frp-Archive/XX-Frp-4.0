@@ -369,8 +369,8 @@ func UpdateUserTraffic(db *gorm.DB) {
 		}
 		for _, todayTraffic := range todayTraffics {
 			// 计算剩余流量
-			totalTrafficMB := float64(userTraffic[todayTraffic.User]) / 1024.0 / 1024.0
-			usedTrafficMB := float64(todayTraffic.Traffic)
+			totalTrafficMB := float64(userTraffic[todayTraffic.User])
+			usedTrafficMB := float64(todayTraffic.Traffic) / 1024.0 / 1024.0
 			remainTraffic := int64(totalTrafficMB - usedTrafficMB)
 			// 如果剩余流量小于=0 则下线该用户的所有隧道
 			if remainTraffic <= 0 {
