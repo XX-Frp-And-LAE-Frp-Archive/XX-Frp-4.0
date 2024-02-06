@@ -336,10 +336,9 @@ func CalculateUserTraffic(db *gorm.DB) {
 				db.Create(&todayTraffic)
 			} else if result.Error == nil {
 				// 对比两者 如果 todayTraffic.Traffic < totalTraffic 则更新
-				if todayTraffic.Traffic < totalTraffic {
-					todayTraffic.Traffic = totalTraffic
-					db.Where("user = ?", user.Username).Save(&todayTraffic)
-				}
+				todayTraffic.Traffic = totalTraffic
+				// 保存记录
+				db.Save(&todayTraffic)
 			} else {
 				log.Println("查询todaytraffic失败:", result.Error)
 			}
@@ -389,7 +388,7 @@ func UpdateUserTraffic(db *gorm.DB) {
 			if userStatus[todayTraffic.User] == 2 {
 				continue
 			}
-			// 如果剩余流量小于=0 则下线该用户的所有隧道
+			// 如果剩余流量小于<=0 则下线该用户的所有隧道
 			if remainTraffic <= 0 {
 				// 下线该用户的所有隧道
 				offlineUserProxies(db, define.User{Username: todayTraffic.User})
@@ -417,7 +416,7 @@ func UpdateUserTraffic(db *gorm.DB) {
 // ClearUserTraffic 清空用户流量
 func ClearUserTraffic(db *gorm.DB) {
 	// 清空 today_traffic 表
-	if err := db.Exec("TRUNCATE TABLE today_traffic").Error; err != nil {
+	if err := db.Exec("TRUNCATE TABLE today_traffics").Error; err != nil {
 		log.Println("清空流量表失败:", err)
 	}
 	// 清空 proxies 表 today_traffic_in today_traffic_out
@@ -459,13 +458,14 @@ func SettleUserTraffic(db *gorm.DB) {
 			continue
 		}
 
+		if userStatus[todayTraffic.User] == 2 {
+			continue
+		}
+
 		if remainTraffic <= 0 {
 			if err := db.Model(&define.User{}).Where("username = ?", todayTraffic.User).Update("traffic", 0).Error; err != nil {
 				log.Println("更新用户流量失败:", err)
 			}
-		}
-		if userStatus[todayTraffic.User] == 2 {
-			continue
 		}
 		if err := db.Model(&define.User{}).Where("username = ?", todayTraffic.User).Update("traffic", remainTraffic).Error; err != nil {
 			log.Println("更新用户流量失败:", err)
