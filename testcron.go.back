@@ -1,0 +1,14 @@
+package main
+
+import "fmt"
+
+func main() {
+	totalTrafficMB := float64(-22865074)
+	usedTrafficMB := float64(2215123711) / 1024.0 / 1024.0
+	remainTraffic := int64(totalTrafficMB - usedTrafficMB)
+	fmt.Print(usedTrafficMB)
+	fmt.Print(remainTraffic)
+	if remainTraffic <= 0 {
+		fmt.Print("流量不足")
+	}
+}

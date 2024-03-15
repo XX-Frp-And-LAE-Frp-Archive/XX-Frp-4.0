@@ -25,13 +25,16 @@ func HandleDeleteTunnel(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	if proxy.Online == "online" {
-		respond.Respond(c, 403, "隧道在线，请先关闭客户端", 0)
+		respond.Respond(c, 403, "隧道在线,请先使用下线隧道功能下线隧道", 0)
 		return
 	}
 	// 结算流量
 	var userRes define.User
 	db.Where("username = ?", user.Username).First(&userRes)
-	userRes.Traffic = userRes.Traffic - proxy.TodayTrafficOut - proxy.TodayTrafficIn
+	// 将 b 转化为 MB
+	todaytrafficb := proxy.TodayTrafficIn + proxy.TodayTrafficOut
+	todaytrafficmb := todaytrafficb / 1024 / 1024
+	userRes.Traffic = userRes.Traffic - todaytrafficmb
 	db.Save(&userRes)
 	db.Delete(&proxy)
 	respond.Respond(c, 200, "删除成功", 0)

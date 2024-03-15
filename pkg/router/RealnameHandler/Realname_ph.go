@@ -10,9 +10,11 @@ import (
 	_struct "github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/gin-gonic/gin"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	ivs "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ivs/v2"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ivs/v2/model"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ivs/v2/region"
 	"gorm.io/gorm"
-	"io"
-	"net/http"
 	"regexp"
 	"time"
 )
@@ -85,32 +87,38 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		db.Delete(&failrealname)
 	}
 	conf := config.GetConfig()
-	url := "https://s.tji0.com/api/two?appid=" + conf.Realname.SecretID + "&appkey=" + conf.Realname.SecretKey + "&name=" + name + "&card=" + idcard
-	// 发送请求
-	resp, err := http.Get(url)
-	if err != nil {
-		respond.Respond(c, 500, "实名认证接口请求错误，请联系管理员", 0)
-		panic(err)
+
+	auth := basic.NewCredentialsBuilder().
+		WithAk(conf.Realname.SecretID).
+		WithSk(conf.Realname.SecretKey).
+		Build()
+
+	client := ivs.NewIvsClient(
+		ivs.IvsClientBuilder().
+			WithRegion(region.ValueOf("cn-north-4")).
+			WithCredential(auth).
+			Build())
+
+	request := &model.DetectExtentionByNameAndIdRequest{}
+	var listReqDataData = []model.ExtentionReqDataByNameAndId{
+		{
+			VerificationName: name,
+			VerificationId:   idcard,
+		},
 	}
-	// 关闭请求
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(resp.Body)
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		respond.Respond(c, 500, "实名认证接口响应错误，请联系管理员", 0)
-		return
+	databody := &model.IvsExtentionByNameAndIdRequestBodyData{
+		ReqData: &listReqDataData,
 	}
-
-	responseText := string(body)
-	// 判断实名认证结果
-
-	switch responseText {
-	case "0":
+	uuidMeta := "12121212"
+	metabody := &model.Meta{
+		Uuid: &uuidMeta,
+	}
+	request.Body = &model.IvsExtentionByNameAndIdRequestBody{
+		Data: databody,
+		Meta: metabody,
+	}
+	_, err := client.DetectExtentionByNameAndId(request) // 判断实名认证结果
+	if err == nil {
 		// 加密 name
 		encodeName, err := RsaEncrypt([]byte(name))
 		if err != nil {
@@ -139,7 +147,7 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 
 		// 返回更新成功的消息
 		respond.Respond(c, 200, "认证成功", 0)
-	case "1":
+	} else {
 		// 将 username time 写入到 failrealname 表中
 		db.Create(&Failrealname{
 			Username: user.Username,
@@ -147,8 +155,6 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 		})
 		// 返回实名认证失败的消息
 		respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
-	default:
-		respond.Respond(c, 500, "接口异常，请联系管理员", 0)
 	}
 }
 
@@ -156,13 +162,13 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 func RsaEncrypt(origData []byte) ([]byte, error) {
 	// 定义 pkcs1 的公钥
 	public := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
-swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
-tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
-LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
-UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
-VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
-OwIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAifc1pb3CJSogQ690K5YZ
+4gC80lP+aU1rWIviUH+UR+21RP7zb+3+FkcclhafS4BhhBOmMzWQUHAab85k0LXm
+WxOtN+2oVjqkNNb2eEMEhARmgnbOGAOlfZJoJLEvnCGMP9YjVMjfuzUeaxxHBiLi
+Z3PSabboCPlwUvCOOHP0CKcJZ3W/KHgHvfY+2XJnezekLGgUwP9O4BIQMk90nolg
+AyI5bHdLPpcLFj51x4Lwi/SoZLacmSDMTlNikPfiTw3/OjdgJnKxAS1Ni3UwN1Dz
+X6l65Pf99CBnxaJzr84/tJZ62IWJK7AtDlIYr5t4jaUDPpf+ilyKhlB0eli0hiei
+0QIDAQAB
 -----END PUBLIC KEY-----`
 	block, _ := pem.Decode([]byte(public))
 	if block == nil {

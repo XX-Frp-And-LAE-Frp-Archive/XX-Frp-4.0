@@ -38,6 +38,7 @@ func CloseTunnel(c *gin.Context, db *gorm.DB) {
 	}
 	// 设置 proxy 的状态为 1
 	proxy.Status = 1
+	proxy.Online = "offline"
 	db.Save(&proxy)
 	// 使用 Basic Auth 认证方式 用户名 admin 密码为 node.AdminPass 地址为 node.Hostname:node.AdminPort 使用 node.mefrp.com 作为host域名
 	// 发送请求到 /api/client/close/ proxy.RunID 代表关闭隧道

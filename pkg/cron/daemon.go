@@ -29,7 +29,6 @@ func FetchData(node define.Node, path string) (*http.Response, error) {
 	// 使用备案域 作为请求地址，防止防火墙拦截
 	url := "http://admin:" + node.AdminPass + "@node.mefrp.com" + ":" + node.AdminPort + "/api" + path
 	// 自定义Dial函数
-	log.Println(url)
 	dialFunc := func(network, addr string) (net.Conn, error) {
 		return net.Dial("tcp", node.Hostname+":"+node.AdminPort)
 	}
@@ -129,7 +128,9 @@ func FetchTraffic(db *gorm.DB) {
 					username := proxy.Username
 					todayTrafficIn := proxy.TodayTrafficIn
 					todayTrafficOut := proxy.TodayTrafficOut
-					totalTraffic := todayTrafficIn + todayTrafficOut
+					totalTrafficb := todayTrafficIn + todayTrafficOut
+					// 计算mb
+					totalTrafficmb := totalTrafficb / 1024 / 1024
 					// 扣除用户流量
 					var user define.User
 					result := db.First(&user, "username = ?", username)
@@ -137,7 +138,7 @@ func FetchTraffic(db *gorm.DB) {
 						log.Println("查询数据库出错:", result.Error)
 						continue
 					}
-					user.Traffic -= totalTraffic
+					user.Traffic -= totalTrafficmb
 					result = db.Save(&user)
 				}
 			}
@@ -181,6 +182,10 @@ func FetchTraffic(db *gorm.DB) {
 
 		// 遍历所有节点
 		var updates []define.Proxies // 存储需要更新的隧道信息
+		// 先将所有隧道的状态设置为离线 要记得写where条件
+		if err := db.Model(&define.Proxies{}).Updates(map[string]interface{}{"online": 0}).Error; err != nil {
+			log.Println("更新隧道状态失败:", err)
+		}
 		for _, node := range nodes {
 			if node.Status != StatusNormal {
 				continue
@@ -338,7 +343,7 @@ func CalculateUserTraffic(db *gorm.DB) {
 				// 对比两者 如果 todayTraffic.Traffic < totalTraffic 则更新
 				todayTraffic.Traffic = totalTraffic
 				// 保存记录
-				db.Save(&todayTraffic)
+				db.Where("user = ?", user.Username).Save(&todayTraffic)
 			} else {
 				log.Println("查询todaytraffic失败:", result.Error)
 			}

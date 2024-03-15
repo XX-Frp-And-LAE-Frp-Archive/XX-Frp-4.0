@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
 	"github.com/ahmr-bot/ME-Frp/pkg/mysql"
 	"gorm.io/gorm"
-	"os"
 )
 
 var (
@@ -28,6 +26,10 @@ type Realname struct {
 	Name     string `json:"name"`
 	IDCard   string `json:"idcard"`
 	Time     int64  `json:"time"`
+}
+type User struct {
+	Username string `json:"username"`
+	Group    string `json:"group"`
 }
 
 func init() {
@@ -45,13 +47,13 @@ func init() {
 func RsaEncrypt(origData []byte) ([]byte, error) {
 	// 定义 pkcs1 的公钥
 	public := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
-swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
-tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
-LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
-UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
-VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
-OwIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAifc1pb3CJSogQ690K5YZ
+4gC80lP+aU1rWIviUH+UR+21RP7zb+3+FkcclhafS4BhhBOmMzWQUHAab85k0LXm
+WxOtN+2oVjqkNNb2eEMEhARmgnbOGAOlfZJoJLEvnCGMP9YjVMjfuzUeaxxHBiLi
+Z3PSabboCPlwUvCOOHP0CKcJZ3W/KHgHvfY+2XJnezekLGgUwP9O4BIQMk90nolg
+AyI5bHdLPpcLFj51x4Lwi/SoZLacmSDMTlNikPfiTw3/OjdgJnKxAS1Ni3UwN1Dz
+X6l65Pf99CBnxaJzr84/tJZ62IWJK7AtDlIYr5t4jaUDPpf+ilyKhlB0eli0hiei
+0QIDAQAB
 -----END PUBLIC KEY-----`
 	block, _ := pem.Decode([]byte(public))
 	if block == nil {
@@ -75,22 +77,24 @@ func main() {
 	// 读取 realnames 表中的数据
 	var realnames []Realname
 	db.Find(&realnames)
-	for _, realname := range realnames {
-		// 先base64分别解码 name 和 idcard
-		name, _ := base64.StdEncoding.DecodeString(realname.Name)
-		idcard, _ := base64.StdEncoding.DecodeString(realname.IDCard)
-		// 将 name-idcard 保存到本地文件
-		file, _ := os.OpenFile("realname.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		file.WriteString(fmt.Sprintf("name: %s, idcard: %s\n", name, idcard))
-		file.Close()
-		// 使用 rsa 解密
-		decodeName, _ := RsaEncrypt(name)
-		decodeIdcard, _ := RsaEncrypt(idcard)
-		// 使用base64编码
-		encodeNameStr := base64.StdEncoding.EncodeToString(decodeName)
-		encodeIdcardStr := base64.StdEncoding.EncodeToString(decodeIdcard)
-		// 更新 realnames 表
-		db.Model(&Realname{}).Where("username = ?", realname.Username).Update("name", encodeNameStr)
-		db.Model(&Realname{}).Where("username = ?", realname.Username).Update("id_card", encodeIdcardStr)
+	// 读取 users 表中的数据
+	var users []User
+	db.Find(&users)
+	// 创建一个 映射 值为 group username 为 key 的 map
+	userMap := make(map[string]string)
+	for _, user := range users {
+		userMap[user.Username] = user.Group
 	}
+	// 遍历 realnames 表中的数据
+	i := 0
+	for _, realname := range realnames {
+		// 更新映射中的 group 为 realname
+		userMap[realname.Username] = "realname"
+		fmt.Printf("更新用户 %s 的 group 为 realname\n", realname.Username)
+		// i 自增
+		i++
+	}
+	// 将更新后的数据写入到 users 表中
+	// 输出更新成功的消息
+	fmt.Printf("更新成功 %d 条数据\n", i)
 }

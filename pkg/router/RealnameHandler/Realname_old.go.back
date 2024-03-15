@@ -209,13 +209,13 @@ func RealnameHandler(c *gin.Context, db *gorm.DB) {
 func RsaEncrypt(origData []byte) ([]byte, error) {
 	// 定义 pkcs1 的公钥
 	public := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsdsKUe83v4qriJ6pI4O3
-swQBowvyoTBNwi2JaFb/6R7F9gskhz/Hv4L+oyliezIJu2UMZJkbYLTBmOM5qrLv
-tgIbKRc+p6wPH4SZDjP/2vuF65Y/UWTse72W6pbgulqy3sKwmbcGmHf0ZB6e+IJw
-LS4z/CSajsm64KI/TFg6AU2WL83rXVSJTG1JnlplghMf2A7V18Cg09ioh9HqnDZC
-UwfLowrn+MpXGInWLAbSNb3t0uuwkCtKwSsTdGVhucCJTHmBdubaTxbdwtlZ4mv6
-VitbxRlYfb4D0gZPCVBIUM4czQ1ObmIjenx7Q7W6xOFaHuD5VPZCm5kVW1yOPOFv
-OwIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAifc1pb3CJSogQ690K5YZ
+4gC80lP+aU1rWIviUH+UR+21RP7zb+3+FkcclhafS4BhhBOmMzWQUHAab85k0LXm
+WxOtN+2oVjqkNNb2eEMEhARmgnbOGAOlfZJoJLEvnCGMP9YjVMjfuzUeaxxHBiLi
+Z3PSabboCPlwUvCOOHP0CKcJZ3W/KHgHvfY+2XJnezekLGgUwP9O4BIQMk90nolg
+AyI5bHdLPpcLFj51x4Lwi/SoZLacmSDMTlNikPfiTw3/OjdgJnKxAS1Ni3UwN1Dz
+X6l65Pf99CBnxaJzr84/tJZ62IWJK7AtDlIYr5t4jaUDPpf+ilyKhlB0eli0hiei
+0QIDAQAB
 -----END PUBLIC KEY-----`
 	block, _ := pem.Decode([]byte(public))
 	if block == nil {
