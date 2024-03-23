@@ -131,6 +131,10 @@ func FetchTraffic(db *gorm.DB) {
 					totalTrafficb := todayTrafficIn + todayTrafficOut
 					// 计算mb
 					totalTrafficmb := totalTrafficb / 1024 / 1024
+					// 清空对应的数据
+					proxy.TodayTrafficOut = 0
+					proxy.TodayTrafficIn = 0
+					result = db.Save(proxy)
 					// 扣除用户流量
 					var user define.User
 					result := db.First(&user, "username = ?", username)
@@ -340,7 +344,6 @@ func CalculateUserTraffic(db *gorm.DB) {
 				}
 				db.Create(&todayTraffic)
 			} else if result.Error == nil {
-				// 对比两者 如果 todayTraffic.Traffic < totalTraffic 则更新
 				todayTraffic.Traffic = totalTraffic
 				// 保存记录
 				db.Where("user = ?", user.Username).Save(&todayTraffic)
@@ -426,6 +429,9 @@ func ClearUserTraffic(db *gorm.DB) {
 	}
 	// 清空 proxies 表 today_traffic_in today_traffic_out
 	if err := db.Model(&define.Proxies{}).Update("today_traffic_in", 0).Error; err != nil {
+		log.Println("清空隧道流量失败:", err)
+	}
+	if err := db.Model(&define.Proxies{}).Update("today_traffic_out", 0).Error; err != nil {
 		log.Println("清空隧道流量失败:", err)
 	}
 }
