@@ -91,7 +91,7 @@ func SendEmail(email string, token string) error {
 func GenerateMessageId() string {
 	timestamp := time.Now().Unix()
 	randomNum := rand.Intn(1000)
-	messageId := fmt.Sprintf("<%d.%d@mcserverx.com>", timestamp, randomNum)
+	messageId := fmt.Sprintf("<%d.%d@mefbi.com>", timestamp, randomNum)
 	return messageId
 }
 

@@ -29,10 +29,26 @@ func IsValidEmail(email string) bool {
 	return match
 }
 
-func IsValidPassword(password string) bool {
-	passwordRegex := `^\d{6,16}$`
-	match, _ := regexp.MatchString(passwordRegex, password)
-	return match
+func validatePassword(password string) bool {
+	// 正则表达式
+	lowerCaseLetter := regexp.MustCompile(`[a-z]`)
+	upperCaseLetter := regexp.MustCompile(`[A-Z]`)
+	number := regexp.MustCompile(`[0-9]`)
+	specialChar := regexp.MustCompile(`[!@#\$%\^&\*]`)
+
+	// 检查是否满足至少两个条件
+	matches := 0
+	if lowerCaseLetter.MatchString(password) || upperCaseLetter.MatchString(password) {
+		matches++
+	}
+	if number.MatchString(password) {
+		matches++
+	}
+	if specialChar.MatchString(password) {
+		matches++
+	}
+
+	return matches >= 2
 }
 
 func isValidCode(code string) bool {
@@ -76,13 +92,10 @@ func HandleRegister(c *gin.Context, db *gorm.DB) {
 		respond.Respond(c, 400, "邮箱格式错误！", 0)
 		return
 	}
-	//if !IsValidPassword(password) {
-	//	c.JSON(400, gin.H{
-	//		"code": 400,
-	//		"msg":  "密码格式错误",
-	//	})
-	//	return
-	// }
+	if !validatePassword(password) {
+		respond.Respond(c, 400, "密码格式错误！", 0)
+		return
+	}
 	if !isValidCode(code) {
 		respond.Respond(c, 400, "验证码格式错误！", 0)
 		return

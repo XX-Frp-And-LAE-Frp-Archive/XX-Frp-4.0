@@ -1,0 +1,241 @@
+package RealnameHandler
+
+import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"github.com/ahmr-bot/ME-Frp/pkg/config"
+	_struct "github.com/ahmr-bot/ME-Frp/pkg/define"
+	"github.com/ahmr-bot/ME-Frp/pkg/respond"
+	"github.com/ahmr-bot/sfz/utils"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"io"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+	"time"
+)
+
+type VerifyResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		Result int `json:"result"`
+	} `json:"data"`
+}
+
+type Realname struct {
+	Username string `json:"username"`
+	Name     string `json:"name"`
+	IDCard   string `json:"idcard"`
+	Time     int64  `json:"time"`
+}
+type Failrealname struct {
+	Username string `json:"username"`
+	Time     int64  `json:"time"`
+}
+
+func IsValidName(name string) bool {
+	//通过正则表达式判断是否为中文
+	if m, _ := regexp.MatchString("^\\p{Han}+$", name); !m {
+		return false
+	}
+	return true
+}
+func IsValidIDCard(idcard string) bool {
+	//通过正则表达式判断是否为18位数字或包含X
+	if m, _ := regexp.MatchString("^[0-9]{17}[0-9X]$", idcard); !m {
+		return false
+	}
+	return true
+}
+func calcAuthorization(source string, secretId string, secretKey string) (auth string, datetime string, err error) {
+	timeLocation, _ := time.LoadLocation("Etc/GMT")
+	datetime = time.Now().In(timeLocation).Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	signStr := fmt.Sprintf("x-date: %s\nx-source: %s", datetime, source)
+
+	// hmac-sha1
+	mac := hmac.New(sha1.New, []byte(secretKey))
+	mac.Write([]byte(signStr))
+	sign := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+	auth = fmt.Sprintf("hmac id=\"%s\", algorithm=\"hmac-sha1\", headers=\"x-date x-source\", signature=\"%s\"",
+		secretId, sign)
+
+	return auth, datetime, nil
+}
+func RealnameHandler(c *gin.Context, db *gorm.DB) {
+	// 获取中间件传递的用户信息
+	userInterface, _ := c.Get("user")
+	user, _ := userInterface.(_struct.User)
+	// 获取提交的表单中的名字和身份证号
+	name := c.PostForm("name")
+	idcard := c.PostForm("idcard")
+	// 检查提交的表单中的名字和身份证号格式
+	if !IsValidName(name) {
+		respond.Respond(c, 400, "姓名格式错误!", 0)
+		return
+	}
+	if !utils.IsValidIDCard(idcard) {
+		respond.Respond(c, 400, "身份证号格式错误!", 0)
+		return
+	}
+
+	// 检查是否已经实名认证
+	var realname Realname
+	exist := db.Where("username = ?", user.Username).First(&realname)
+	if exist.RowsAffected != 0 {
+		respond.Respond(c, 400, "已经实名认证!", 0)
+		return
+	}
+	// 检查24小时内是否有失败记录
+	var failrealname Failrealname
+	fails := db.Where("username = ?", user.Username).First(&failrealname)
+	if fails.RowsAffected != 0 {
+		if time.Now().Unix()-failrealname.Time < 86400 {
+			respond.Respond(c, 400, "24小时只能认证一次！", 0)
+			return
+		}
+		// 超过24小时删除对应用户的失败记录
+		db.Delete(&failrealname)
+	}
+	// 通过 api 调用 https://service-lbiior1h-1307960160.sh.apigw.tencentcs.com/release/idcard/verify 进行实名认证
+	// post请求参数为 name 和 idcard
+	// 返回值为 {"code":200,"msg":"success","data":{"result":1}}
+	// result为1表示实名认证成功 result为2表示不匹配 result为3表示暂无
+	// 通过 result 判断是否实名认证成功
+	// 通过 username 更新数据库中的 realname 和 idcard 字段
+	// 返回 {"code":200,"msg":"success"}
+
+	source := "market"
+	// 进行签名
+	conf := config.GetConfig()
+	auth, datetime, err := calcAuthorization(source, conf.Realname.SecretID, conf.Realname.SecretKey)
+	// 拼接 body 数据
+	// body参数
+
+	// 使用 x-www-form-urlencoded 格式
+	postData := url.Values{}
+	postData.Add("name", name)
+	postData.Add("idcard", idcard)
+	// 发送 POST 请求 并使用 bodyParams 作为 body headers 作为请求头
+	// 创建一个请求对象，并设置请求方法、URL 和请求体
+	req, err := http.NewRequest("POST", "https://service-mxg591r7-1308811306.sh.apigw.tencentcs.com/release/v3/id_name/verify", strings.NewReader(postData.Encode()))
+	if err != nil {
+		panic(err)
+	}
+	// 设置请求头
+	req.Header.Set("X-Source", source)
+	req.Header.Set("X-Date", datetime)
+	req.Header.Set("Authorization", auth)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// debug
+	// fmt.Println(conf.Realname.SecretID)
+	// fmt.Println(conf.Realname.SecretKey)
+	// fmt.Println(auth)
+	// fmt.Println(datetime)
+	// fmt.Println(source)
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.StatusCode)
+	// 关闭请求
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+
+	// 解析返回的 JSON 数据
+	var result VerifyResponse
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		fmt.Println("解析响应异常:", err)
+		return
+	}
+	// 判断实名认证结果
+	if result.Code == 200 && result.Data.Result == 1 {
+		// 加密 name
+		encodeName, err := RsaEncrypt([]byte(name))
+		if err != nil {
+			respond.Respond(c, 500, "加密失败，请联系管理员", 0)
+			return
+		}
+		// 加密 idcard
+		encodeIdcard, err := RsaEncrypt([]byte(idcard))
+		if err != nil {
+			respond.Respond(c, 500, "加密失败，请联系管理员", 0)
+			return
+		}
+		// base64 编码
+		encodeNameStr := base64.StdEncoding.EncodeToString(encodeName)
+		encodeIdcardStr := base64.StdEncoding.EncodeToString(encodeIdcard)
+
+		// 在 realname 表的创建一行 写入 username name idcard time 信息
+		db.Create(&Realname{
+			Username: user.Username,
+			Name:     encodeNameStr,
+			IDCard:   encodeIdcardStr,
+			Time:     time.Now().Unix(),
+		})
+		// 更新 users 表的 group 为 realname
+		db.Model(&User{}).Where("username = ?", user.Username).Update("group", "realname")
+
+		// 返回更新成功的消息
+		respond.Respond(c, 200, "认证成功", 0)
+	} else if result.Code != 200 {
+		// fmt.Println("实名认证接口错误:", result)
+		respond.Respond(c, 500, "实名认证接口错误，请联系管理员", 0)
+	} else if result.Data.Result == 2 || result.Data.Result == 3 {
+		// 将 username time 写入到 failrealname 表中
+		db.Create(&Failrealname{
+			Username: user.Username,
+			Time:     time.Now().Unix(),
+		})
+		// 返回实名认证失败的消息
+		if result.Data.Result == 2 {
+			respond.Respond(c, 400, "信息不匹配，请24小时后重试", 0)
+		} else {
+			respond.Respond(c, 400, "数据库信息缺失，请联系管理员或24小时重试", 0)
+		}
+	}
+}
+
+// RsaEncrypt rsa加密
+func RsaEncrypt(origData []byte) ([]byte, error) {
+	// 定义 pkcs1 的公钥
+	public := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAifc1pb3CJSogQ690K5YZ
+4gC80lP+aU1rWIviUH+UR+21RP7zb+3+FkcclhafS4BhhBOmMzWQUHAab85k0LXm
+WxOtN+2oVjqkNNb2eEMEhARmgnbOGAOlfZJoJLEvnCGMP9YjVMjfuzUeaxxHBiLi
+Z3PSabboCPlwUvCOOHP0CKcJZ3W/KHgHvfY+2XJnezekLGgUwP9O4BIQMk90nolg
+AyI5bHdLPpcLFj51x4Lwi/SoZLacmSDMTlNikPfiTw3/OjdgJnKxAS1Ni3UwN1Dz
+X6l65Pf99CBnxaJzr84/tJZ62IWJK7AtDlIYr5t4jaUDPpf+ilyKhlB0eli0hiei
+0QIDAQAB
+-----END PUBLIC KEY-----`
+	block, _ := pem.Decode([]byte(public))
+	if block == nil {
+		panic("public key error")
+	}
+	// 解析公钥
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	// 类型断言
+	pub := pubInterface.(*rsa.PublicKey)
+	// 加密
+	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
+}

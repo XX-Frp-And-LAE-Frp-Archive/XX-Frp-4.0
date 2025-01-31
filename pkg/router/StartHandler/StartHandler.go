@@ -1,43 +1,49 @@
 package StartHandler
 
 import (
+	"strings"
+
 	"github.com/ahmr-bot/ME-Frp/pkg/config"
 	"github.com/ahmr-bot/ME-Frp/pkg/define"
 	"github.com/ahmr-bot/ME-Frp/pkg/respond"
 	"github.com/ahmr-bot/ME-Frp/pkg/router/TunnelHandler"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"strings"
 )
 
 func HandleStart(c *gin.Context, db *gorm.DB) {
 	conf := config.GetConfig()
-	// 获取 url 参数 action 的值
-	action := c.Query("action")
-	// 获取 url 参数 token 的值
-	apitoken := c.Query("apitoken")
-	user := c.Query("user")
 
-	//将 apitoken 分为 | 前后两部分
-	apitokenSlice := strings.Split(apitoken, "|")
-	//apitoken 为 | 前面的部分
-	token := apitokenSlice[0]
-	//id 为 | 后面的部分
-	nodeid := apitokenSlice[1]
-	if token != conf.Server.Token {
-		respond.Respond(c, 503, "Token 错误", 0)
+	// 获取 url 参数
+	action, apitoken, user := getQueryParams(c)
+
+	// 判断三者是否为空
+	if action == "" || apitoken == "" || user == "" {
+		respond.Respond(c, 403, "参数错误", 0)
 		return
 	}
+
+	// 将 apitoken 分为 | 前后两部分
+	token, nodeid := splitApiToken(apitoken)
+
+	// 判断 token 是否等于配置文件中的 token
+	if token != conf.Server.Token {
+		respond.Respond(c, 401, "Token 错误", 0)
+		return
+	}
+
 	// 读取node表id字段 判断id是否存在
 	var node define.Node
 	result := db.Where("id = ?", nodeid).First(&node)
 	if result.Error != nil {
-		respond.Respond(c, 503, "节点不存在", 0)
+		respond.Respond(c, 404, "节点不存在", 0)
 		return
 	}
+
 	// 根据 action 的值进行判断
 	switch strings.ToLower(action) {
 	case "checktoken":
+
 		// 在users表中查询是否存在指定的token
 		var User define.User
 		result := db.Where("token = ?", user).First(&User)
@@ -45,35 +51,23 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			respond.Respond(c, 403, "user 错误", 0)
 			return
 		}
-		// 判断用户status是否为0
-		if User.Status == 1 {
+		switch User.Status {
+		case 1:
 			respond.Respond(c, 403, "已被封禁", 0)
 			return
-		}
-		// 判断 status 是否为2
-		if User.Status == 2 {
+		case 2:
 			respond.Respond(c, 403, "流量已耗尽，隧道启动功能将在流量>0的5分钟内恢复", 0)
 			return
+		default:
+			// 状态为0
 		}
+
 		// 判断用户是否有权限使用该节点
-		var node define.Node
-		nodeResult := db.First(&node, "id = ?", nodeid)
-		if nodeResult.Error != nil {
-			respond.Respond(c, 403, "无权使用此节点", 0)
-			return
-		}
-		// 通过 User.Username 查询用户组
-		var user define.User
-		userResult := db.First(&user, "username = ?", User.Username)
-		if userResult.Error != nil {
-			respond.Respond(c, 403, "未找到用户", 0)
-			return
-		}
-		// 判断用户是否有权限使用该节点
-		if !TunnelHandler.CheckGroup(node.Group, user.Group) {
+		if !TunnelHandler.CheckGroup(node.Group, User.Group) {
 			respond.Respond(c, 403, "你无权使用此节点", 0)
 			return
 		}
+
 		// 此处大抵是还不能改（）,直接写成规范格式罢
 		c.JSON(200, gin.H{
 			"status":  200,
@@ -195,4 +189,15 @@ func HandleStart(c *gin.Context, db *gorm.DB) {
 			"max-out": limit.Outbound,
 		})
 	}
+}
+
+// 获取 url 参数
+func getQueryParams(c *gin.Context) (string, string, string) {
+	return c.Query("action"), c.Query("apitoken"), c.Query("user")
+}
+
+// 将 apitoken 分为 | 前后两部分
+func splitApiToken(apitoken string) (string, string) {
+	apitokenSlice := strings.Split(apitoken, "|")
+	return apitokenSlice[0], apitokenSlice[1]
 }

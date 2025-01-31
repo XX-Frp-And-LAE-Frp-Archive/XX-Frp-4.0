@@ -18,8 +18,6 @@ func StartCronJobs(db *gorm.DB) {
 	// 用不到了
 	// 更新预设
 	go UpdateSettingPeriodically(db)
-	// 加载用户流量
-	go FetchTraffic(db)
 	// 计算用户流量
 	go CalculateUserTraffic(db)
 	// 扣费与强制下线
@@ -36,6 +34,11 @@ func StartCronJobs(db *gorm.DB) {
 	_, _ = c.AddFunc("0 30 0 * * *", func() {
 		// 此时 frps 用户流量清零 清空数据库
 		ClearUserTraffic(db)
+	})
+	// 每10min执行一次
+
+	_, _ = c.AddFunc("0 0/10 * * * *", func() {
+		FetchTraffic(db)
 	})
 	// 启动定时任务
 	c.Start()
